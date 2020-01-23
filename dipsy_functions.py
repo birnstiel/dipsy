@@ -82,7 +82,7 @@ def get_powerlaw_dust_distribution(sigma_d, a_max, q=3.5, na=10, a0=None, a1=Non
     return a, a_i, sig_da
 
 
-def bplanck(self, freq, temp):
+def bplanck(freq, temp):
     """
     This function computes the Planck function
 
@@ -112,3 +112,46 @@ def bplanck(self, freq, temp):
         ii      = x < 1.e-3
         bpl[ii] = bplrj[ii]
     return bpl
+
+
+def nuker_profile(rho, rhot, alpha, beta, gamma, N=1):
+    """
+    Nuker profile used in Tripathi et al. 2017, from Lauer et al. 1995.
+
+    for alpha > 0:
+
+    - at rho<<rhot: profile \\propto rho^-gamma
+    - at rho>>rhot: profile \\propto rho^-beta
+    - alpha determines transition smoothness: larger alpha is sharper
+
+    Arguments:
+    ----------
+    rho : array
+        radial grid
+
+    rhot : float
+        transition radius
+
+    alpha : float
+        transition slope
+
+    beta : float
+        outer disk index
+
+    gamma :
+        inner disk index
+
+    Keywords:
+    ---------
+
+    N : float
+        normalization constant such that int(2*pi*rho*profile)=N
+
+    Output:
+    -------
+    profile : array
+        normalized Nuker profile on radial grid rho
+    """
+    profile = (rho / rhot)**-gamma * (1 + (rho / rhot)**alpha)**((gamma - beta) / alpha)
+    profile = profile * N / np.trapz(2.0 * np.pi * rho * profile, x=rho)
+    return profile
