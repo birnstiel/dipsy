@@ -1,10 +1,10 @@
 import numpy as np
-
 import astropy.constants as c
 
 h = c.h.cgs.value
 c_light = c.c.cgs.value
 k_B = c.k_B.cgs.value
+pc = c.pc.cgs.value
 
 
 def get_powerlaw_dust_distribution(sigma_d, a_max, q=3.5, na=10, a0=None, a1=None):
