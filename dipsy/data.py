@@ -46,14 +46,17 @@ class Testi2014(object):
 
         f, ax = plt.subplots()
 
-        ax.scatter(self.F_mm, self.alpha_mm, c='k')
+        for region in set(self.region):
+            mask = np.array(self.region) == region
+            ax.scatter(self.F_mm[mask], self.alpha_mm[mask], label=region)
+
         ax.set_xlim(10, 1000)
         ax.set_xscale('log')
         ax.set_ylim(1.5, 4.5)
-        ax.set_xlabel(r'$F_\mathrm{mm}$ [Jy]')
+        ax.set_xlabel(r'$F_\mathrm{mm}$ [mJy]')
         ax.set_ylabel(r'$\alpha_\mathrm{1-3mm}$')
+        ax.legend(fontsize='small')
         return f, ax
-
 
 
 class Tripathi2017(object):
