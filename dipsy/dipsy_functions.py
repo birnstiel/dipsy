@@ -1,5 +1,10 @@
+import os
+
 import numpy as np
 import astropy.constants as c
+from scipy.interpolate import interp2d
+
+import dsharp_opac
 
 h = c.h.cgs.value
 c_light = c.c.cgs.value
@@ -155,3 +160,161 @@ def nuker_profile(rho, rhot, alpha, beta, gamma, N=1):
     profile = (rho / rhot)**-gamma * (1 + (rho / rhot)**alpha)**((gamma - beta) / alpha)
     profile = profile * N / np.trapz(2.0 * np.pi * rho * profile, x=rho)
     return profile
+
+
+class Opacity(object):
+    _filename = None
+    _lam      = None
+    _a        = None
+    _k_abs    = None
+    _k_sca    = None
+    _g        = None
+    _rho_s    = None
+
+    def __init__(self, input=None):
+
+        # set default opacities
+
+        if input is None:
+            input = 'default_opacities_smooth.npz'
+
+        if type(input) is str and not os.path.isfile(input):
+            input = dsharp_opac.get_datafile('default_opacities_smooth.npz')
+            if not os.path.isfile(input):
+                raise ValueError('unknown input')
+
+        if type(input) is str and os.path.isfile(input):
+            with np.load(input) as f:
+                self._load_from_dict_like(f)
+
+        elif type(input) is dict:
+            self._load_from_dict_like(dict)
+
+    def _load_from_dict_like(self, input):
+        for attr in ['a', 'lam', 'k_abs', 'k_sca', 'g', 'rho_s']:
+            if attr in input:
+                setattr(self, '_' + attr, input[attr])
+            else:
+                print(f'{attr} not in input')
+
+        self._interp_k_abs = interp2d(np.log10(self._lam), np.log10(self._a), np.log10(self._k_abs))
+        self._interp_k_sca = interp2d(np.log10(self._lam), np.log10(self._a), np.log10(self._k_sca))
+
+    def get_opacities(self, a, lam):
+        """
+        Returns the absorption and scattering opacities for the given particle
+        size a and wavelength lam.
+
+        Arguments:
+        ----------
+
+        a : float | array
+            particle size in cm
+
+        lam : float | array
+            wavelength in cm
+
+        Returns:
+        --------
+        k_abs, k_sca : arrays
+            absorption and scattering opacities, each of shape (len(a), len(lam))
+        """
+        return \
+            10.**self._interp_k_abs(np.log10(lam), np.log10(a)), \
+            10.**self._interp_k_sca(np.log10(lam), np.log10(a)),
+
+
+def get_observables(r, sig_g, sig_d, a_max, T, opacity, distance=140 * pc, flux_fraction=0.68):
+    """
+    Calculates the radial profiles of the (vertical) optical depth and the intensity for a given simulation
+    at a given time (using the closest simulation snapshot).
+
+    Arguments:
+    ----------
+
+    res : twopoppy.results.results
+        twopoppy simulation results object
+
+    time : float
+        time at which to calculate the results [s]
+
+    lam : array
+        wavelengths at which to calculate the results [cm]
+
+    a_opac : array
+        particle size grid on which the opacities are defined [cm]
+
+    k_a : array
+        absorption opacity as function of wavelength (grid lam) and
+        particle size (grid a_opac) [cm^2/g]
+
+    Keywords:
+    ---------
+
+    distance : float
+        distance to source [cm]
+
+    flux_fraction : float
+        at which fraction of the total flux the effective radius is defined [-]
+
+    Output:
+    -------
+
+    rf : array
+        effective radii for every wavelength [cm]
+
+    flux_t : array
+        integrated flux for every wavelength [Jy]
+
+    tau,Inu : array
+        optical depth and intensity profiles at every wavelength [-, Jy/arcsec**2]
+
+    sig_da, : array
+        reconstructed particle size distribution on grid (res.a, res.x)
+
+    a_max : array
+        maximum particle size [cm]
+    """
+
+    # interpolate opacity on the same particle size grid as the size distribution
+
+    kappa = np.array([10.**np.interp(np.log10(res.a), np.log10(a_opac), np.log10(k)) for k in k_a.T]).T
+
+    it = np.abs(res.timesteps - time).argmin()
+
+    if res.T.ndim == 1:
+        T = res.T
+    else:
+        T = res.T[it]
+
+    # reconstruct the size distribution
+
+    sig_da, a_max = get_distri(res, it)
+
+    # calculate planck function at every wavelength and radius
+
+    Bnu = planck_B_nu(c_light / (np.array(lam, ndmin=2).T), np.array(T, ndmin=2))  # shape = (n_lam, n_r)
+
+    # calculate optical depth
+
+    tau = (kappa.T[:, :, np.newaxis] * sig_da[np.newaxis, :, :])  # shape = (n_l, n_a, n_r)
+    tau = tau.sum(1)  # shape = (n_l, n_r)
+
+    # calculate intensity at every wavelength and radius for this snapshot
+    # here the intensity is still in plain CGS units (per sterad)
+
+    intens = Bnu * (1 - np.exp(-tau))
+
+    # calculate the fluxes
+
+    flux = distance**-2 * cumtrapz(2 * np.pi * res.x * intens, x=res.x, axis=1, initial=0)  # integrated flux density
+    flux_t = flux[:, -1] / 1e-23  # store the integrated flux density in Jy (sanity check: TW Hya @ 870 micron and 54 parsec is about 1.5 Jy)
+
+    # converted intensity to Jy/arcsec**2
+
+    Inu = intens * arcsec_sq / 1e-23
+
+    # interpolate radius whithin which >=68% of the dust mass is
+    rf = np.array([np.interp(flux_fraction, _f / _f[-1], res.x) for _f in flux])
+
+    return rf, flux_t, tau, Inu, sig_da, a_max

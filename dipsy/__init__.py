@@ -1,9 +1,10 @@
 from . import data
-from dipsy_functions import \
+from .dipsy_functions import \
     get_powerlaw_dust_distribution, \
     bplanck, \
     nuker_profile, \
-    get_observables
+    get_observables, \
+    Opacity
 
 __all__ = [
     'data',
@@ -11,4 +12,5 @@ __all__ = [
     'bplanck',
     'nuker_profile',
     'get_observables',
+    'Opacity'
     ]
