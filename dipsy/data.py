@@ -55,7 +55,7 @@ class Testi2014(object):
         ax.set_ylim(1.5, 4.5)
         ax.set_xlabel(r'$F_\mathrm{mm}$ [mJy]')
         ax.set_ylabel(r'$\alpha_\mathrm{1-3mm}$')
-        ax.legend(fontsize='small')
+        ax.legend(fontsize='small').get_frame().set_alpha(0)
         return f, ax
 
 
