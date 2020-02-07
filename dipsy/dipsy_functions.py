@@ -171,6 +171,11 @@ class Opacity(object):
     _g        = None
     _rho_s    = None
 
+    @property
+    def rho_s(self):
+        "material density in g/cm^3"
+        return self._rho_s
+
     def __init__(self, input=None):
 
         # set default opacities
@@ -184,6 +189,7 @@ class Opacity(object):
                 raise ValueError('unknown input')
 
         if type(input) is str and os.path.isfile(input):
+            self._filename = input
             with np.load(input) as f:
                 self._load_from_dict_like(f)
 
@@ -196,6 +202,8 @@ class Opacity(object):
                 setattr(self, '_' + attr, input[attr])
             else:
                 print(f'{attr} not in input')
+        if self._rho_s is not None:
+            self._rho_s = float(self._rho_s)
 
         self._interp_k_abs = interp2d(np.log10(self._lam), np.log10(self._a), np.log10(self._k_abs))
         self._interp_k_sca = interp2d(np.log10(self._lam), np.log10(self._a), np.log10(self._k_sca))
