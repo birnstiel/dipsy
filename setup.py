@@ -28,6 +28,8 @@ if __name__ == "__main__":
         install_requires=[
             'numpy',
             'matplotlib',
-            'astropy'],
+            'astropy',
+            'astroquery',
+            'lifelines'],
         zip_safe=False,
         )
