@@ -1,16 +1,22 @@
 from . import data
 from .dipsy_functions import \
-    get_powerlaw_dust_distribution, \
+    Opacity, \
     bplanck, \
-    nuker_profile, \
+    get_flux_and_radius, \
     get_observables, \
-    Opacity
+    get_powerlaw_dust_distribution, \
+    nuker_profile, \
+    read_dustpy_data, \
+    read_rosotti_data
 
 __all__ = [
     'data',
-    'get_powerlaw_dust_distribution',
+    'Opacity',
     'bplanck',
-    'nuker_profile',
+    'get_flux_and_radius',
     'get_observables',
-    'Opacity'
+    'get_powerlaw_dust_distribution',
+    'nuker_profile',
+    'read_dustpy_data',
+    'read_rosotti_data'
     ]
