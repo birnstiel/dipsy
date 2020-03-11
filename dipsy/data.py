@@ -76,10 +76,10 @@ class Tripathi2017(object):
         Data from Tripathi et al. 2017 containing the
 
         R_eff : array
-            effective radius [au]
+            log10 of effective radius [au]
 
         L_mm : array
-            Luminosity at 857 micron [Jy]
+            log10 of Luminosity at 857 micron [Jy]
         """
         fname = pkg_resources.resource_filename(__name__, os.path.join('datasets', 'tripathi2017.pickle'))
 
@@ -106,6 +106,26 @@ class Tripathi2017(object):
         x = np.array(ax.get_xlim())
         y = 2.13 + 0.51 * x
         ax.plot(x, y, c='0.5', ls='--')
+        return f, ax
+
+    def plot_rosotti(self):
+        """
+        Creates a plot of the size-luminosity relation with exchanged axes
+        Returns the figure handle and axis handle.
+        """
+
+        f, ax = plt.subplots()
+
+        ax.scatter(self.R_eff[:, 1], self.L_mm[:, 1], c='k')
+        mask = np.isnan(self.R_eff[:, 0])
+        ax.scatter(self.R_eff[mask, 2], self.L_mm[mask, 1], marker='v', c='r')
+        ax.set_xlim(1, 2.3)
+        ax.set_ylim(-2.5, .5)
+        ax.set_xlabel(r'$\log\,R_\mathrm{eff}/\mathrm{AU}$')
+        ax.set_ylabel(r'$\log\,L_\mathrm{mm}/\mathrm{Jy}$')
+        x = np.array(ax.get_ylim())
+        y = 2.13 + 0.51 * x
+        ax.plot(y, x, c='0.5', ls='--')
         return f, ax
 
 
