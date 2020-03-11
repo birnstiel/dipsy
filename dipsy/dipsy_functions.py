@@ -1,8 +1,11 @@
 import os
+import h5py
 
 import numpy as np
 import astropy.constants as c
+import astropy.units as u
 from scipy.interpolate import interp2d
+from collections import namedtuple
 
 import dsharp_opac
 
@@ -10,6 +13,12 @@ h = c.h.cgs.value
 c_light = c.c.cgs.value
 k_B = c.k_B.cgs.value
 pc = c.pc.cgs.value
+jy_sas  = (1 * u.Jy / u.arcsec**2).cgs.value
+year  = (1 * u.year).cgs.value
+
+observables    = namedtuple('observables', ['rf', 'flux_t', 'tau', 'I_nu', 'sig_da'])
+dustpy_result  = namedtuple('dustpy_result', ['r', 'a_max', 'a', 'a_mean', 'sig_d', 'sig_da', 'sig_g', 'time', 'T'])
+rosotti_result = namedtuple('rosotti_result', ['a_max', 'time', 'T', 'sig_d', 'sig_g', 'd2g', 'r', 'L_star', 'M_star', 'T_star'])
 
 
 def get_powerlaw_dust_distribution(sigma_d, a_max, q=3.5, na=10, a0=None, a1=None):
@@ -232,7 +241,7 @@ class Opacity(object):
             10.**self._interp_k_sca(np.log10(lam), np.log10(a)),
 
 
-def get_observables(r, sig_g, sig_d, a_max, T, opacity, distance=140 * pc, flux_fraction=0.68):
+def get_observables(r, sig_g, sig_d, a_max, T, opacity, lam, distance=140 * pc, flux_fraction=0.68, a=None, q=3.5, na=50, a0=None, a1=None):
     """
     Calculates the radial profiles of the (vertical) optical depth and the intensity for a given simulation
     at a given time (using the closest simulation snapshot).
@@ -240,21 +249,27 @@ def get_observables(r, sig_g, sig_d, a_max, T, opacity, distance=140 * pc, flux_
     Arguments:
     ----------
 
-    res : twopoppy.results.results
-        twopoppy simulation results object
+    r : array
+        radial array [cm]
 
-    time : float
-        time at which to calculate the results [s]
+    sig_g : array
+        gas surface density on r [g/cm^2]
+
+    sig_d : 1d-array | 2d-array
+        - 1d: dust surface density on r [g/cm^2]
+        - 2d: dust surface density on r and a shape=(len(r), len(a)) [g/cm^2]
+
+    a_max : array
+        maximum particle size on r [cm]
+
+    T : array
+        temperature grid on r [K]
 
     lam : array
-        wavelengths at which to calculate the results [cm]
+        the wavlengths at which to calculate the observables [cm]
 
-    a_opac : array
-        particle size grid on which the opacities are defined [cm]
-
-    k_a : array
-        absorption opacity as function of wavelength (grid lam) and
-        particle size (grid a_opac) [cm^2/g]
+    opacty : instance of Opacity
+        the opacity to use for the calculation
 
     Keywords:
     ---------
@@ -264,6 +279,22 @@ def get_observables(r, sig_g, sig_d, a_max, T, opacity, distance=140 * pc, flux_
 
     flux_fraction : float
         at which fraction of the total flux the effective radius is defined [-]
+
+    a : None | float
+        if size distribution information is known (= sig_d is 2D), pass the
+        particle size array here
+
+    q : float
+        size exponent to use: n(a) ~ a^-q, so 3.5=MRN
+
+    na : int
+        length of the particle size grid
+
+    a0 : float
+        minimum particle size to use for the dust size distribution [cm]
+
+    a1 : float
+        maximum particle size to use for the dust size distribution [cm]
 
     Output:
     -------
@@ -279,50 +310,262 @@ def get_observables(r, sig_g, sig_d, a_max, T, opacity, distance=140 * pc, flux_
 
     sig_da, : array
         reconstructed particle size distribution on grid (res.a, res.x)
-
-    a_max : array
-        maximum particle size [cm]
     """
+    from scipy.integrate import cumtrapz
 
-    # interpolate opacity on the same particle size grid as the size distribution
+    # get the size distribution
+    if (a is not None and sig_d.ndim != 2) or (a is None and sig_d.ndim != 1):
+        raise ValueError('either a=None and sig_d.ndim=1 or a!=None and sig_d.ndim=2')
 
-    kappa = np.array([10.**np.interp(np.log10(res.a), np.log10(a_opac), np.log10(k)) for k in k_a.T]).T
-
-    it = np.abs(res.timesteps - time).argmin()
-
-    if res.T.ndim == 1:
-        T = res.T
+    if a is None:
+        a, a_i, sig_da = get_powerlaw_dust_distribution(sig_d, a_max, q=q, na=na, a0=a0, a1=a1)
     else:
-        T = res.T[it]
+        sig_da = sig_d
 
-    # reconstruct the size distribution
+    lam   = np.array(lam, ndmin=1)
+    n_lam = len(lam)
 
-    sig_da, a_max = get_distri(res, it)
+    I_nu = np.zeros([n_lam, len(r)])
+    tau  = np.zeros([n_lam, len(r)])
 
-    # calculate planck function at every wavelength and radius
+    # get opacities at our wavelength and particle sizes
 
-    Bnu = planck_B_nu(c_light / (np.array(lam, ndmin=2).T), np.array(T, ndmin=2))  # shape = (n_lam, n_r)
+    k_a  = opacity.get_opacities(a, lam)[0].T
 
-    # calculate optical depth
+    for ilam, _lam in enumerate(lam):
+        freq = c_light / _lam
 
-    tau = (kappa.T[:, :, np.newaxis] * sig_da[np.newaxis, :, :])  # shape = (n_l, n_a, n_r)
-    tau = tau.sum(1)  # shape = (n_l, n_r)
+        # Calculate intensity profile
 
-    # calculate intensity at every wavelength and radius for this snapshot
-    # here the intensity is still in plain CGS units (per sterad)
-
-    intens = Bnu * (1 - np.exp(-tau))
+        tau[ilam, :]  = (sig_da * k_a[ilam, :].T).sum(-1)
+        I_nu[ilam, :] = bplanck(freq, T) * (1 - np.exp(-tau[ilam, :]))
 
     # calculate the fluxes
 
-    flux = distance**-2 * cumtrapz(2 * np.pi * res.x * intens, x=res.x, axis=1, initial=0)  # integrated flux density
-    flux_t = flux[:, -1] / 1e-23  # store the integrated flux density in Jy (sanity check: TW Hya @ 870 micron and 54 parsec is about 1.5 Jy)
+    flux = distance**-2 * cumtrapz(2 * np.pi * r * I_nu, x=r, axis=1, initial=0)
+    flux_t = flux[:, -1] / 1e-23  # integrated flux density in Jy (sanity check: TW Hya @ 870 micron and 54 parsec is about 1.5 Jy)
 
     # converted intensity to Jy/arcsec**2
 
-    Inu = intens * arcsec_sq / 1e-23
+    I_nu = I_nu / jy_sas
 
     # interpolate radius whithin which >=68% of the dust mass is
-    rf = np.array([np.interp(flux_fraction, _f / _f[-1], res.x) for _f in flux])
 
-    return rf, flux_t, tau, Inu, sig_da, a_max
+    rf = np.array([np.interp(flux_fraction, _f / _f[-1], r) for _f in flux])
+
+    return observables(rf, flux_t, tau, I_nu, sig_da)
+
+
+def get_flux_and_radius(d, opac, lam, amax=True, q=3.5):
+    """Calculate effective radius and total flux for all snapshots
+
+    Arguments:
+    ----------
+
+    d : namedtuple
+        the output of read_dustpy_data, read_rosotti_data, or run_bump_model
+
+    opac : instance of Opacity
+        which opacity to use
+
+    lam : float | array
+        wavelength(s) of the observations
+
+    amax : bool
+        if True, will always use a power-law distribution, even if size distribution
+        is available.
+
+    q : float
+        size distribution exponent
+
+    Returns:
+    --------
+    rf : array
+        68% effective radii for all snapshots [cm]
+
+    flux : array
+        total flux for all snapshots [Jy]
+    """
+    rf   = []
+    flux = []
+
+    if amax is False and hasattr(d, 'sig_da'):
+        a = d.a
+        sig_d = d.sig_da
+    else:
+        a = None
+        sig_d = d.sig_d
+
+    for it in range(len(d.time)):
+        obs = get_observables(d.r, d.sig_g[it, :], sig_d[it], d.a_max[it, :], d.T[it, :], opac, lam, q=q, a=a)
+        rf   += [obs.rf]
+        flux += [obs.flux_t]
+
+    rf   = np.array(rf)
+    flux = np.array(flux)
+
+    return rf, flux
+
+
+def read_rosotti_data(fname):
+    """
+    Reads Giovanni Rosottis HDF5 file and returns
+    a dict with numpy arrays, all in CGS.
+    """
+    from astropy import constants as c
+    from astropy import units as u
+    import numpy as np
+
+    au        = u.au.to('cm')
+    M_sun = c.M_sun.cgs.value
+    L_sun = c.L_sun.cgs.value
+
+    with h5py.File(fname) as f:
+
+        dset = f['pop_0']
+
+        snap_indices = []
+        for key in dset.keys():
+            if key.startswith('time_'):
+                snap_indices += [int(key.replace('time_', ''))]
+
+        snap_indices.sort()
+
+        r    = dset[f'time_{snap_indices[0]}/yso_0/Disk/Rc'][()] * au
+        n_t  = len(snap_indices)
+        n_r  = len(r)
+
+        amax   = np.zeros([n_t, n_r])
+        d2g    = np.zeros([n_t, n_r])
+        T      = np.zeros([n_t, n_r])
+        sig_d  = np.zeros([n_t, n_r])
+        sig_g  = np.zeros([n_t, n_r])
+        age    = np.zeros([n_t])
+        L_star = np.zeros([n_t])
+        M_star = np.zeros([n_t])
+        T_star = np.zeros([n_t])
+
+        for idx in snap_indices:
+            sig = dset[f'time_{idx}/yso_0/Disk/sigma'][()]
+            d2g = dset[f'time_{idx}/yso_0/Disk/dust_frac'][()].sum(0)
+
+            sig_g[idx, :] = sig / (1 + d2g)
+            sig_d[idx, :] = sig / (1 + d2g) * d2g
+            amax[idx, :]  = dset[f'time_{idx}/yso_0/Disk/amax'][()]
+            T[idx, :]     = dset[f'time_{idx}/yso_0/Disk/T'][()]
+
+            age[idx]      = dset[f'time_{idx}/yso_0/evolution_time'][()] / (2 * np.pi) * year
+            L_star[idx]   = dset[f'time_{idx}/yso_0/Star/llum'][()] * L_sun
+            M_star[idx]   = dset[f'time_{idx}/yso_0/Star/mass'][()] * M_sun
+            T_star[idx]   = dset[f'time_{idx}/yso_0/Star/teff'][()]
+
+        return rosotti_result(amax, age, T, sig_d, sig_g, d2g, r, L_star, M_star, T_star)
+
+
+def read_dustpy_data(data_path, time=None):
+    """
+    Read the dustpy files from the directory data_path, then interpolate the
+    densities at the given time snapshots (or take the original time if None is
+    passed).
+
+    Arguments:
+    ----------
+
+    data_path : str
+        path to the output directory where the hdf5 files are
+
+    time : array | None
+        if not None: interpolate at those times
+
+    Output:
+    -------
+    returns dict with these keys:
+    - r
+    - a_max
+    - sig_d
+    - sig_g
+    - time
+    """
+    from dustpy.sim.utils import readFilesFromDir
+    from dustpy.sim.utils import getSequence
+    from scipy.interpolate import interp2d
+
+    files = readFilesFromDir(data_path, 'data*.hdf5')
+
+    time_dp = getSequence("t", files)
+
+    # Read the radial and mass grid
+    r = getSequence("grid/r", files)[0]
+    # rInt = getSequence("grid/rInt", files)
+    # m = getSequence("grid/m", files)
+
+    # Read the gas and dust densities
+    sig_g  = getSequence("gas/Sigma", files)
+    sig_da = getSequence("dust/Sigma", files)
+    sig_d  = sig_da.sum(-1)
+
+    # Read the stokes number and dust size
+    # St = getSequence("dust/St", files)
+    a = getSequence("dust/a", files)[0, 0, :]
+
+    # Read the star mass and radius
+    # M_star = getSequence("star/M", files)[0]
+    # R_star = getSequence("star/R", files)[0]
+
+    # Obtain the dust to gas ratio
+    # d2g = sig_d / sig_g
+
+    # Read the Gas and Dust scale height
+    # Hg = getSequence("gas/Hp", files)
+    # Hd = getSequence("dust/h", files)
+
+    # Read the gas (viscous) and dust velocities
+    # Vel_g = getSequence("gas/vVisc", files)
+    Vel_d = getSequence("dust/vRad", files)
+
+    # Read the alpha parameter and the orbital angular velocity
+    # Alpha  = getSequence("gas/alpha", files)
+    # OmegaK = getSequence("grid/OmegaK", files)
+
+    # Read the gas midplane density, sound speed, and eta parameter
+    # rho = getSequence("gas/rho", files)
+    # cs = getSequence("gas/cs", files)
+    # eta = getSequence("gas/eta", files)
+
+    T = getSequence("gas/T", files)
+
+    # Obtain the Accretion Rate of dust and gas
+    # Acc_g = 2 * np.pi * r * Vel_g * sig_g
+    # Acc_d = 2 * np.pi * r * (Vel_d * sig_d).sum(-1)
+
+    # Obtain the alpha-viscosity
+    # Visc =  Alpha * cs * cs / OmegaK
+
+    a_mean = (a * sig_da * np.abs(Vel_d)).sum(-1) / (sig_da * np.abs(Vel_d)).sum(-1)
+    a_max = a[sig_da.argmax(-1)]
+
+    if time is None:
+        time = time_dp
+    else:
+        f_Td = interp2d(np.log10(r), np.log10(time_dp + 1e-100), np.log10(T))
+        f_sd = interp2d(np.log10(r), np.log10(time_dp + 1e-100), np.log10(sig_d))
+        f_sg = interp2d(np.log10(r), np.log10(time_dp + 1e-100), np.log10(sig_g))
+        f_ax = interp2d(np.log10(r), np.log10(time_dp + 1e-100), np.log10(a_max))
+        f_am = interp2d(np.log10(r), np.log10(time_dp + 1e-100), np.log10(a_mean))
+
+        T      = 10.**f_Td(np.log10(r), np.log10(time + 1e-100))
+        sig_d  = 10.**f_sd(np.log10(r), np.log10(time + 1e-100))
+        sig_g  = 10.**f_sg(np.log10(r), np.log10(time + 1e-100))
+        a_max  = 10.**f_ax(np.log10(r), np.log10(time + 1e-100))
+        a_mean = 10.**f_am(np.log10(r), np.log10(time + 1e-100))
+
+        sig_da_new = np.zeros([len(time), len(r), len(a)])
+        for ia in range(len(a)):
+            f = interp2d(np.log10(r), np.log10(time_dp + 1e-100), np.log10(sig_da[:, :, ia]))
+            sig_da_new[:, :, ia]  = 10.**f(np.log10(r), np.log10(time + 1e-100))
+
+        sig_da = sig_da_new
+
+    dp = dustpy_result(r, a_max, a, a_mean, sig_d, sig_da, sig_g, time, T)
+
+    return dp
