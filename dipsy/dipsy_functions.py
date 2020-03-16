@@ -10,7 +10,7 @@ from .utils import bplanck
 
 import dsharp_opac
 
-observables    = namedtuple('observables', ['rf', 'flux_t', 'tau', 'I_nu', 'sig_da'])
+observables    = namedtuple('observables', ['rf', 'flux_t', 'tau', 'I_nu', 'a', 'sig_da'])
 dustpy_result  = namedtuple('dustpy_result', ['r', 'a_max', 'a', 'a_mean', 'sig_d', 'sig_da', 'sig_g', 'time', 'T'])
 rosotti_result = namedtuple('rosotti_result', ['a_max', 'time', 'T', 'sig_d', 'sig_g', 'd2g', 'r', 'L_star', 'M_star', 'T_star'])
 
@@ -272,7 +272,7 @@ def get_observables(r, sig_g, sig_d, a_max, T, opacity, lam, distance=140 * pc, 
 
     rf = np.array([np.interp(flux_fraction, _f / _f[-1], r) for _f in flux])
 
-    return observables(rf, flux_t, tau, I_nu, sig_da)
+    return observables(rf, flux_t, tau, I_nu, a, sig_da)
 
 
 def get_all_observables(d, opac, lam, amax=True, q=3.5):
@@ -309,30 +309,33 @@ def get_all_observables(d, opac, lam, amax=True, q=3.5):
     flux   = []
     tau    = []
     I_nu   = []
+    a      = []
     sig_da = []
 
     if amax is False and hasattr(d, 'sig_da'):
-        a = d.a
+        _a = d.a
         sig_d = d.sig_da
     else:
-        a = None
+        _a = None
         sig_d = d.sig_d
 
     for it in range(len(d.time)):
-        obs = get_observables(d.r, d.sig_g[it, :], sig_d[it], d.a_max[it, :], d.T[it, :], opac, lam, q=q, a=a)
+        obs = get_observables(d.r, d.sig_g[it, :], sig_d[it], d.a_max[it, :], d.T[it, :], opac, lam, q=q, a=_a)
         rf     += [obs.rf]
         flux   += [obs.flux_t]
         tau    += [obs.tau]
         I_nu   += [obs.I_nu]
+        a      += [obs.a]
         sig_da += [obs.sig_da]
 
     rf     = np.array(rf)
     flux   = np.array(flux)
     tau    = np.array(tau)
     I_nu   = np.array(I_nu)
+    a      = np.array(a)
     sig_da = np.array(sig_da)
 
-    return observables(rf, flux, tau, I_nu, sig_da)
+    return observables(rf, flux, tau, I_nu, a, sig_da)
 
 
 def read_rosotti_data(fname):
