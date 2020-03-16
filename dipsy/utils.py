@@ -5,7 +5,7 @@ from matplotlib.collections import LineCollection
 from .cgs_constants import k_B, h, c_light
 
 
-def colored_line(x, y, time, colorbar=False, ax=None, cmap='viridis', **kwargs):
+def colored_line(x, y, time, colorbar=False, ax=None, cmap='viridis', label=None, **kwargs):
     """
     Draws a colored line. Time is the progress along the colorbar for a given point.
 
@@ -26,6 +26,11 @@ def colored_line(x, y, time, colorbar=False, ax=None, cmap='viridis', **kwargs):
 
     cmap : colormap
         which colormap to pass to the LineCollection
+
+    label : None | str
+        if None: do not add a label
+        if empty string: just add a initial marker
+        if string: also add this label to the marker
 
     Output:
     -------
@@ -49,6 +54,12 @@ def colored_line(x, y, time, colorbar=False, ax=None, cmap='viridis', **kwargs):
     lc.set_linewidth(2)
 
     line = ax.add_collection(lc)
+
+    if label is not None:
+        if type(cmap) is str:
+            cmap = plt.get_cmap(cmap)
+        c = cmap(0.5)
+        ax.scatter(x[0], y[0], c=[c], label=label, zorder=lc.get_zorder() + 1)
 
     if colorbar:
         ax.fig.colorbar(line, ax=ax)
