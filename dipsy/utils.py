@@ -5,7 +5,8 @@ from matplotlib.collections import LineCollection
 from .cgs_constants import k_B, h, c_light
 
 
-def colored_line(x, y, time, colorbar=False, ax=None, cmap='viridis', label=None, **kwargs):
+def colored_line(x, y, time, colorbar=False, ax=None, cmap='viridis',
+                 label=None, cmap_offset=0, **kwargs):
     """
     Draws a colored line. Time is the progress along the colorbar for a given point.
 
@@ -32,11 +33,22 @@ def colored_line(x, y, time, colorbar=False, ax=None, cmap='viridis', label=None
         if empty string: just add a initial marker
         if string: also add this label to the marker
 
+    text : None | str
+        put this text on the marker
+
+    cmap_offset : float
+        offset the colormap by this amount (0 ... 1)
+
     Output:
     -------
     ax : the axis object
     line : the LineCollection
     """
+
+    if 'lw' not in kwargs and 'linewidth' not in kwargs:
+        kwargs['lw'] = 6
+
+    text = kwargs.pop('text', None)
 
     # convert line to segments
 
@@ -50,19 +62,23 @@ def colored_line(x, y, time, colorbar=False, ax=None, cmap='viridis', label=None
 
     norm = plt.Normalize(time.min(), time.max())
     lc = LineCollection(segments, cmap=cmap, norm=norm, **kwargs)
-    lc.set_array(time)
+    lc.set_array(time + cmap_offset * (time.max() - time.min()))
     lc.set_linewidth(2)
+
+    if text is not None:
+        ax.text(x[-1], y[-1], text, c='w', horizontalalignment='center', verticalalignment='center', fontsize=6)
 
     line = ax.add_collection(lc)
 
     if label is not None:
         if type(cmap) is str:
             cmap = plt.get_cmap(cmap)
-        c = cmap(0.5)
-        ax.scatter(x[0], y[0], c=[c], label=label, zorder=lc.get_zorder() + 1)
+        c = kwargs.get('c', kwargs.get('color', cmap(0.75)))
+        ax.scatter(x[0], y[0], c=[c], label=label, zorder=lc.get_zorder() + 1, s=50)
+        ax.scatter(x[-1], y[-1], c=[c], zorder=lc.get_zorder() + 1, s=50)
 
     if colorbar:
-        ax.fig.colorbar(line, ax=ax)
+        ax.figure.colorbar(line, ax=ax)
 
     return ax, line
 

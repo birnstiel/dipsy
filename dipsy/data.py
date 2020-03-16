@@ -45,13 +45,19 @@ class Testi2014(object):
             _ = fid.readline()
             self.region = [line.split('"')[1] for line in fid.readlines()]
 
-    def plot(self):
+    def plot(self, ax=None):
         """
         Creates a plot of the flux-alpha observations
         Returns the figure handle and axis handle.
+
+        ax : None | axis handle
+            if given, draw into these axes
         """
 
-        f, ax = plt.subplots()
+        if ax is None:
+            f, ax = plt.subplots()
+        else:
+            f = ax.figure
 
         for region in set(self.region):
             mask = np.array(self.region) == region
@@ -88,13 +94,18 @@ class Tripathi2017(object):
             self.R_eff = np.array(data['R_eff'])
             self.L_mm = np.array(data['L_mm'])
 
-    def plot(self):
+    def plot(self, ax=None):
         """
         Creates a plot of the size-luminosity relation.
         Returns the figure handle and axis handle.
-        """
 
-        f, ax = plt.subplots()
+        ax : None | axes handle
+            if not None: draw into these axes
+        """
+        if ax is None:
+            f, ax = plt.subplots()
+        else:
+            f = ax.figure
 
         ax.scatter(self.L_mm[:, 1], self.R_eff[:, 1], c='k')
         mask = np.isnan(self.R_eff[:, 0])
@@ -108,13 +119,25 @@ class Tripathi2017(object):
         ax.plot(x, y, c='0.5', ls='--')
         return f, ax
 
-    def plot_rosotti(self):
+    def plot_rosotti(self, ax=None):
         """
         Creates a plot of the size-luminosity relation with exchanged axes
+
+        Arguments:
+        ----------
+
+        ax : None | axes handle
+            if not None: draw into these axes
+
+        Output:
+        -------
+
         Returns the figure handle and axis handle.
         """
-
-        f, ax = plt.subplots()
+        if ax is None:
+            f, ax = plt.subplots()
+        else:
+            f = ax.figure
 
         ax.scatter(self.R_eff[:, 1], self.L_mm[:, 1], c='k')
         mask = np.isnan(self.R_eff[:, 0])
