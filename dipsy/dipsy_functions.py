@@ -275,8 +275,8 @@ def get_observables(r, sig_g, sig_d, a_max, T, opacity, lam, distance=140 * pc, 
     return observables(rf, flux_t, tau, I_nu, sig_da)
 
 
-def get_flux_and_radius(d, opac, lam, amax=True, q=3.5):
-    """Calculate effective radius and total flux for all snapshots
+def get_all_observables(d, opac, lam, amax=True, q=3.5):
+    """Calculate the radius and total flux for all snapshots of a simulation
 
     Arguments:
     ----------
@@ -305,8 +305,11 @@ def get_flux_and_radius(d, opac, lam, amax=True, q=3.5):
     flux : array
         total flux for all snapshots [Jy]
     """
-    rf   = []
-    flux = []
+    rf     = []
+    flux   = []
+    tau    = []
+    I_nu   = []
+    sig_da = []
 
     if amax is False and hasattr(d, 'sig_da'):
         a = d.a
@@ -317,13 +320,19 @@ def get_flux_and_radius(d, opac, lam, amax=True, q=3.5):
 
     for it in range(len(d.time)):
         obs = get_observables(d.r, d.sig_g[it, :], sig_d[it], d.a_max[it, :], d.T[it, :], opac, lam, q=q, a=a)
-        rf   += [obs.rf]
-        flux += [obs.flux_t]
+        rf     += [obs.rf]
+        flux   += [obs.flux_t]
+        tau    += [obs.tau]
+        I_nu   += [obs.I_nu]
+        sig_da += [obs.sig_da]
 
-    rf   = np.array(rf)
-    flux = np.array(flux)
+    rf     = np.array(rf)
+    flux   = np.array(flux)
+    tau    = np.array(tau)
+    I_nu   = np.array(I_nu)
+    sig_da = np.array(sig_da)
 
-    return rf, flux
+    return observables(rf, flux, tau, I_nu, sig_da)
 
 
 def read_rosotti_data(fname):
