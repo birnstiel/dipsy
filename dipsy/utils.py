@@ -95,22 +95,22 @@ def bplanck(freq, temp):
      freq  [Hz]            = Frequency in Herz (can be array)
      temp  [K]             = Temperature in Kelvin (can be array)
     """
-    const1  = h / k_B
-    const2  = 2 * h / c_light**2
-    const3  = 2 * k_B / c_light**2
-    x       = const1 * freq / (temp + 1e-99)
+    const1 = h / k_B
+    const2 = 2 * h / c_light**2
+    const3 = 2 * k_B / c_light**2
+    x = const1 * freq / (temp + 1e-99)
     if np.isscalar(x):
         if x > 500.:
             x = 500.
     else:
         x[np.where(x > 500.)] = 500.
-    bpl     = const2 * (freq**3) / ((np.exp(x) - 1.e0) + 1e-99)
-    bplrj   = const3 * (freq**2) * temp
+    bpl = const2 * (freq**3) / ((np.exp(x) - 1.e0) + 1e-99)
+    bplrj = const3 * (freq**2) * temp
     if np.isscalar(x):
         if x < 1.e-3:
             bpl = bplrj
     else:
-        ii      = x < 1.e-3
+        ii = x < 1.e-3
         bpl[ii] = bplrj[ii]
     return bpl
 
@@ -156,3 +156,29 @@ def nuker_profile(rho, rhot, alpha, beta, gamma, N=1):
     profile = (rho / rhot)**-gamma * (1 + (rho / rhot)**alpha)**((gamma - beta) / alpha)
     profile = profile * N / np.trapz(2.0 * np.pi * rho * profile, x=rho)
     return profile
+
+
+def get_interfaces_from_log_cell_centers(x):
+    """
+    Returns the cell interfaces for an array of logarithmic
+    cell centers.
+
+    Arguments:
+    ----------
+
+    x : array
+    :   Array of logarithmically spaced cell centers for
+        which the interfaces should be calculated
+
+    Output:
+    -------
+
+    xi : array
+    :    Array of length len(x)+1 containing the grid interfaces
+         defined such that 0.5*(xi[i]+xi[i+1]) = xi
+    """
+    x = np.asarray(x)
+    B = x[1] / x[0]
+    A = (B + 1) / 2.
+    xi = np.append(x / A, x[-1] * B / A)
+    return xi
