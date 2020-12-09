@@ -58,7 +58,7 @@ def histogram_corner(d, param_values, param_interfaces=None, param_label=None, f
             # plot the histograms
 
             H = np.histogram2d(x, y, bins=[param_interfaces[x_name], param_interfaces[y_name]])
-            m = ax.imshow(H[0], vmin=0, vmax=vmax)
+            m = ax.imshow(H[0].T, vmin=0, vmax=vmax, origin='lower')
 
             # SET X-LABELS
 
@@ -245,7 +245,7 @@ def histogram2D(d, x_name, y_name, param_values, param_interfaces=None, param_la
         bins=[param_interfaces[x_name], param_interfaces[y_name]]
     )
 
-    m = ax.imshow(H[0], vmin=0, vmax=vmax)
+    m = ax.imshow(H[0].T, vmin=0, vmax=vmax, origin='lower')
     plt.colorbar(m)
 
     xvalues = param_values[x_name]
