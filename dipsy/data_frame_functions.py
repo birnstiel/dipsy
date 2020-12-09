@@ -8,6 +8,7 @@ def get_param_values(df, param_names):
     param_values = {}
     for name in param_names:
         param_values[name] = sorted(list(set(df[name])))
+    return param_values
 
 
 def make_interfaces(param_values):
@@ -19,6 +20,7 @@ def make_interfaces(param_values):
     param_interfaces = {}
     for name, values in param_values.items():
         param_interfaces[name] = np.hstack((0.99 * np.array(values), 1.01 * values[-1]))
+    return param_interfaces
 
 
 def histogram_corner(d, param_values, param_interfaces=None, param_label=None, f=None, vmax=1000.):
