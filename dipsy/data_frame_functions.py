@@ -4,6 +4,12 @@ import matplotlib.pyplot as plt
 from .data import Fmm_corr
 
 
+def get_param_values(df, param_names):
+    param_values = {}
+    for name in param_names:
+        param_values[name] = sorted(list(set(df[name])))
+
+
 def make_interfaces(param_values):
     """
     Make interfaces from parameter values for the histograms.
