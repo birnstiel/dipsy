@@ -1,30 +1,35 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+from .data import Fmm_corr
 
-def Reff_corr(Fmm, sigma=0):
+
+def make_interfaces(param_values):
     """
-    Returns the effective radius according to the Tripathi
-    correlation. It adds `sigma` standard deviations, where
-    `sigma` can be positive or negative.
+    Make interfaces from parameter values for the histograms.
+    This just puts the interfaces slightly to the left and right of
+    the values.
     """
-    Fmm = np.asarray(Fmm)
-    R_eff = 10**(2.12 + sigma * 0.19) * np.sqrt(Fmm)
-    return np.squeeze(R_eff)
+    param_interfaces = {}
+    for name, values in param_values.items():
+        param_interfaces[name] = np.hstack((0.99 * np.array(values), 1.01 * values[-1]))
 
 
-def Fmm_corr(R_eff, sigma=0):
+def histogram_corner(d, param_values, param_interfaces=None, param_label=None, f=None, vmax=1000.):
     """
-    Returns the flux according to the Tripathi
-    correlation. It adds `sigma` standard deviations, where
-    `sigma` can be positive or negative.
+    Produce a "corner plot" where all the parameter combinations
+    are shown as 2D histograms.
+
+    param_
     """
-    R_eff = np.asarray(R_eff)
-    Fmm = R_eff**2 * 10.**(-4.24 + sigma * 0.38)
-    return np.squeeze(Fmm)
 
+    param_names = list(param_values.keys())
 
-def histogram_corner(d, param_names, param_values, param_interfaces, param_label, f=None, vmax=1000.):
+    if param_interfaces is None:
+        param_interfaces = make_interfaces(param_values)
+
+    if param_label is None:
+        param_label = {k: k for k in param_names}
 
     if f is None:
         f = plt.figure(figsize=(15, 15))
@@ -88,7 +93,15 @@ def histogram_corner(d, param_names, param_values, param_interfaces, param_label
     return f
 
 
-def histogram1d_normalized(d, x_name, param_values, param_interfaces, param_label, n_sims=None, f=None):
+def histogram1d_normalized(d, x_name, param_values, param_interfaces=None, param_label=None, n_sims=None, f=None):
+
+    param_names = list(param_values.keys())
+
+    if param_interfaces is None:
+        param_interfaces = make_interfaces(param_values)
+
+    if param_label is None:
+        param_label = {k: k for k in param_names}
 
     if f is None:
         f = plt.figure()
@@ -201,7 +214,15 @@ def filter_function(row, i0=0, i1=-1, dex_scatter=0.38, **kwargs):
     return np.all((distance > corr[0]) & (distance < corr[1]))
 
 
-def histogram2D(d, x_name, y_name, param_values, param_interfaces, param_label, f=None, ax=None, vmax=1000):
+def histogram2D(d, x_name, y_name, param_values, param_interfaces=None, param_label=None, f=None, ax=None, vmax=1000):
+
+    param_names = list(param_values.keys())
+
+    if param_interfaces is None:
+        param_interfaces = make_interfaces(param_values)
+
+    if param_label is None:
+        param_label = {k: k for k in param_names}
 
     if f is None:
         f = plt.figure()
