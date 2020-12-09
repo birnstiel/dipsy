@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .data import Fmm_corr
+from .data import T17_Fmm_corr
 
 
 def get_param_values(df, param_names):
@@ -216,7 +216,7 @@ def filter_function(row, i0=0, i1=-1, dex_scatter=0.38, **kwargs):
         corr = [-corr[0], corr[0]]
     corr = sorted(corr)
 
-    distance = np.log10(f_mm / Fmm_corr(r_eff)) / dex_scatter
+    distance = np.log10(f_mm / T17_Fmm_corr(r_eff)) / dex_scatter
     return np.all((distance > corr[0]) & (distance < corr[1]))
 
 
