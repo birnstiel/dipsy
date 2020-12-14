@@ -141,12 +141,14 @@ class Tripathi2017(object):
         ax.plot(x, y, c='0.5', ls='--')
         return f, ax
 
-    def plot_rosotti(self, ax=None):
+    def plot_rosotti(self, sigma=False, ax=None):
         """
         Creates a plot of the size-luminosity relation with exchanged axes
 
         Arguments:
         ----------
+        sigma : boolean
+            if True: fill in between one sigma from the correlation
 
         ax : None | axes handle
             if not None: draw into these axes
@@ -161,16 +163,26 @@ class Tripathi2017(object):
         else:
             f = ax.figure
 
-        ax.scatter(self.R_eff[:, 1], self.L_mm[:, 1], c='k')
+        ax.scatter(self.R_eff[:, 1], self.L_mm[:, 1], c='k', label='Tripathi et al. 2017')
         mask = np.isnan(self.R_eff[:, 0])
-        ax.scatter(self.R_eff[mask, 2], self.L_mm[mask, 1], marker='v', c='r')
+        #remove the red v markers and the next line as normal dots
+        #ax.scatter(self.R_eff[mask, 2], self.L_mm[mask, 1], marker='v', c='r')
+        ax.scatter(self.R_eff[mask, 2], self.L_mm[mask, 1], c='k')
+
         ax.set_xlim(1, 2.3)
         ax.set_ylim(-2.5, .5)
         ax.set_xlabel(r'$\log\,R_\mathrm{eff}/\mathrm{AU}$')
         ax.set_ylabel(r'$\log\,L_\mathrm{mm}/\mathrm{Jy}$')
         x = np.array(ax.get_ylim())
         y = 2.13 + 0.51 * x
-        ax.plot(y, x, c='0.5', ls='--')
+        #ax.plot(y, x, c='0.5', ls='--')
+        # add the following lines to fill in between one sigma
+        ax.plot(y, x, c='0.', ls='--', label='$\mathrm{R_{eff} \propto \sqrt{L_{mm}}}$')
+        if sigma==True:
+            # add the standard deviation
+            ax.plot(y+0.19, x, c='0.75', ls='--')
+            ax.plot(y-0.19, x, c='0.75', ls='--')
+            ax.fill_between(y, x-0.38, x+0.38, alpha=0.3)
         return f, ax
 
 
