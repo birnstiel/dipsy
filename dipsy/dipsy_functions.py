@@ -10,8 +10,8 @@ from .utils import bplanck
 
 import dsharp_opac
 
-observables    = namedtuple('observables', ['rf', 'flux_t', 'tau', 'I_nu', 'a', 'sig_da'])
-dustpy_result  = namedtuple('dustpy_result', ['r', 'a_max', 'a', 'a_mean', 'sig_d', 'sig_da', 'sig_g', 'time', 'T'])
+observables = namedtuple('observables', ['rf', 'flux_t', 'tau', 'I_nu', 'a', 'sig_da'])
+dustpy_result = namedtuple('dustpy_result', ['r', 'a_max', 'a', 'a_mean', 'sig_d', 'sig_da', 'sig_g', 'time', 'T'])
 rosotti_result = namedtuple('rosotti_result', ['a_max', 'time', 'T', 'sig_d', 'sig_g', 'd2g', 'r', 'L_star', 'M_star', 'T_star'])
 
 
@@ -92,12 +92,12 @@ def get_powerlaw_dust_distribution(sigma_d, a_max, q=3.5, na=10, a0=None, a1=Non
 
 class Opacity(object):
     _filename = None
-    _lam      = None
-    _a        = None
-    _k_abs    = None
-    _k_sca    = None
-    _g        = None
-    _rho_s    = None
+    _lam = None
+    _a = None
+    _k_abs = None
+    _k_sca = None
+    _g = None
+    _rho_s = None
 
     @property
     def rho_s(self):
@@ -112,7 +112,7 @@ class Opacity(object):
             input = 'default_opacities_smooth.npz'
 
         if type(input) is str and not os.path.isfile(input):
-            input = dsharp_opac.get_datafile('default_opacities_smooth.npz')
+            input = dsharp_opac.get_datafile(input)
             if not os.path.isfile(input):
                 raise ValueError('unknown input')
 
@@ -241,22 +241,22 @@ def get_observables(r, sig_g, sig_d, a_max, T, opacity, lam, distance=140 * pc, 
     else:
         sig_da = sig_d
 
-    lam   = np.array(lam, ndmin=1)
+    lam = np.array(lam, ndmin=1)
     n_lam = len(lam)
 
     I_nu = np.zeros([n_lam, len(r)])
-    tau  = np.zeros([n_lam, len(r)])
+    tau = np.zeros([n_lam, len(r)])
 
     # get opacities at our wavelength and particle sizes
 
-    k_a  = opacity.get_opacities(a, lam)[0].T
+    k_a = opacity.get_opacities(a, lam)[0].T
 
     for ilam, _lam in enumerate(lam):
         freq = c_light / _lam
 
         # Calculate intensity profile
 
-        tau[ilam, :]  = (sig_da * k_a[ilam, :].T).sum(-1)
+        tau[ilam, :] = (sig_da * k_a[ilam, :].T).sum(-1)
         I_nu[ilam, :] = bplanck(freq, T) * (1 - np.exp(-tau[ilam, :]))
 
     # calculate the fluxes
@@ -305,11 +305,11 @@ def get_all_observables(d, opac, lam, amax=True, q=3.5):
     flux : array
         total flux for all snapshots [Jy]
     """
-    rf     = []
-    flux   = []
-    tau    = []
-    I_nu   = []
-    a      = []
+    rf = []
+    flux = []
+    tau = []
+    I_nu = []
+    a = []
     sig_da = []
 
     if amax is False and hasattr(d, 'sig_da'):
@@ -321,18 +321,18 @@ def get_all_observables(d, opac, lam, amax=True, q=3.5):
 
     for it in range(len(d.time)):
         obs = get_observables(d.r, d.sig_g[it, :], sig_d[it], d.a_max[it, :], d.T[it, :], opac, lam, q=q, a=_a)
-        rf     += [obs.rf]
-        flux   += [obs.flux_t]
-        tau    += [obs.tau]
-        I_nu   += [obs.I_nu]
-        a      += [obs.a]
+        rf += [obs.rf]
+        flux += [obs.flux_t]
+        tau += [obs.tau]
+        I_nu += [obs.I_nu]
+        a += [obs.a]
         sig_da += [obs.sig_da]
 
-    rf     = np.array(rf)
-    flux   = np.array(flux)
-    tau    = np.array(tau)
-    I_nu   = np.array(I_nu)
-    a      = np.array(a)
+    rf = np.array(rf)
+    flux = np.array(flux)
+    tau = np.array(tau)
+    I_nu = np.array(I_nu)
+    a = np.array(a)
     sig_da = np.array(sig_da)
 
     return observables(rf, flux, tau, I_nu, a, sig_da)
@@ -347,7 +347,7 @@ def read_rosotti_data(fname):
     from astropy import units as u
     import numpy as np
 
-    au        = u.au.to('cm')
+    au = u.au.to('cm')
     M_sun = c.M_sun.cgs.value
     L_sun = c.L_sun.cgs.value
 
@@ -362,16 +362,16 @@ def read_rosotti_data(fname):
 
         snap_indices.sort()
 
-        r    = dset[f'time_{snap_indices[0]}/yso_0/Disk/Rc'][()] * au
-        n_t  = len(snap_indices)
-        n_r  = len(r)
+        r = dset[f'time_{snap_indices[0]}/yso_0/Disk/Rc'][()] * au
+        n_t = len(snap_indices)
+        n_r = len(r)
 
-        amax   = np.zeros([n_t, n_r])
-        d2g    = np.zeros([n_t, n_r])
-        T      = np.zeros([n_t, n_r])
-        sig_d  = np.zeros([n_t, n_r])
-        sig_g  = np.zeros([n_t, n_r])
-        age    = np.zeros([n_t])
+        amax = np.zeros([n_t, n_r])
+        d2g = np.zeros([n_t, n_r])
+        T = np.zeros([n_t, n_r])
+        sig_d = np.zeros([n_t, n_r])
+        sig_g = np.zeros([n_t, n_r])
+        age = np.zeros([n_t])
         L_star = np.zeros([n_t])
         M_star = np.zeros([n_t])
         T_star = np.zeros([n_t])
@@ -382,13 +382,13 @@ def read_rosotti_data(fname):
 
             sig_g[idx, :] = sig / (1 + d2g)
             sig_d[idx, :] = sig / (1 + d2g) * d2g
-            amax[idx, :]  = dset[f'time_{idx}/yso_0/Disk/amax'][()]
-            T[idx, :]     = dset[f'time_{idx}/yso_0/Disk/T'][()]
+            amax[idx, :] = dset[f'time_{idx}/yso_0/Disk/amax'][()]
+            T[idx, :] = dset[f'time_{idx}/yso_0/Disk/T'][()]
 
-            age[idx]      = dset[f'time_{idx}/yso_0/evolution_time'][()] / (2 * np.pi) * year
-            L_star[idx]   = dset[f'time_{idx}/yso_0/Star/llum'][()] * L_sun
-            M_star[idx]   = dset[f'time_{idx}/yso_0/Star/mass'][()] * M_sun
-            T_star[idx]   = dset[f'time_{idx}/yso_0/Star/teff'][()]
+            age[idx] = dset[f'time_{idx}/yso_0/evolution_time'][()] / (2 * np.pi) * year
+            L_star[idx] = dset[f'time_{idx}/yso_0/Star/llum'][()] * L_sun
+            M_star[idx] = dset[f'time_{idx}/yso_0/Star/mass'][()] * M_sun
+            T_star[idx] = dset[f'time_{idx}/yso_0/Star/teff'][()]
 
         return rosotti_result(amax, age, T, sig_d, sig_g, d2g, r, L_star, M_star, T_star)
 
@@ -431,9 +431,9 @@ def read_dustpy_data(data_path, time=None):
     # m = getSequence("grid/m", files)
 
     # Read the gas and dust densities
-    sig_g  = getSequence("gas/Sigma", files)
+    sig_g = getSequence("gas/Sigma", files)
     sig_da = getSequence("dust/Sigma", files)
-    sig_d  = sig_da.sum(-1)
+    sig_d = sig_da.sum(-1)
 
     # Read the stokes number and dust size
     # St = getSequence("dust/St", files)
@@ -484,16 +484,16 @@ def read_dustpy_data(data_path, time=None):
         f_ax = interp2d(np.log10(r), np.log10(time_dp + 1e-100), np.log10(a_max))
         f_am = interp2d(np.log10(r), np.log10(time_dp + 1e-100), np.log10(a_mean))
 
-        T      = 10.**f_Td(np.log10(r), np.log10(time + 1e-100))
-        sig_d  = 10.**f_sd(np.log10(r), np.log10(time + 1e-100))
-        sig_g  = 10.**f_sg(np.log10(r), np.log10(time + 1e-100))
-        a_max  = 10.**f_ax(np.log10(r), np.log10(time + 1e-100))
+        T = 10.**f_Td(np.log10(r), np.log10(time + 1e-100))
+        sig_d = 10.**f_sd(np.log10(r), np.log10(time + 1e-100))
+        sig_g = 10.**f_sg(np.log10(r), np.log10(time + 1e-100))
+        a_max = 10.**f_ax(np.log10(r), np.log10(time + 1e-100))
         a_mean = 10.**f_am(np.log10(r), np.log10(time + 1e-100))
 
         sig_da_new = np.zeros([len(time), len(r), len(a)])
         for ia in range(len(a)):
             f = interp2d(np.log10(r), np.log10(time_dp + 1e-100), np.log10(sig_da[:, :, ia]))
-            sig_da_new[:, :, ia]  = 10.**f(np.log10(r), np.log10(time + 1e-100))
+            sig_da_new[:, :, ia] = 10.**f(np.log10(r), np.log10(time + 1e-100))
 
         sig_da = sig_da_new
 
