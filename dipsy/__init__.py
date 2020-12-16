@@ -11,8 +11,7 @@ from .dipsy_functions import \
     get_observables, \
     get_powerlaw_dust_distribution, \
     read_dustpy_data, \
-    read_rosotti_data, \
-    get_stellar_properties
+    read_rosotti_data
 
 __all__ = [
     'data',
