@@ -1,3 +1,6 @@
+"""
+access to data sets or observational correlations functions.
+"""
 import pickle
 import os
 import pkg_resources
@@ -165,7 +168,7 @@ class Tripathi2017(object):
 
         ax.scatter(self.R_eff[:, 1], self.L_mm[:, 1], c='k', label='Tripathi et al. 2017')
         mask = np.isnan(self.R_eff[:, 0])
-        #remove the red v markers and the next line as normal dots
+        # remove the red v markers and the next line as normal dots
         #ax.scatter(self.R_eff[mask, 2], self.L_mm[mask, 1], marker='v', c='r')
         ax.scatter(self.R_eff[mask, 2], self.L_mm[mask, 1], c='k')
 
@@ -178,7 +181,7 @@ class Tripathi2017(object):
         #ax.plot(y, x, c='0.5', ls='--')
         # add the following lines to fill in between one sigma
         ax.plot(y, x, c='0.', ls='--', label='$\mathrm{R_{eff} \propto \sqrt{L_{mm}}}$')
-        if sigma==True:
+        if sigma == True:
             # add the standard deviation
             ax.plot(y+0.19, x, c='0.75', ls='--')
             ax.plot(y-0.19, x, c='0.75', ls='--')

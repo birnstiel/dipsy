@@ -1,3 +1,10 @@
+"""
+Functions to process (pre-)stellar evolution tracks. The stellar evolutionary track data
+is from
+
+    Siess L., Dufour E., Forestini M. 2000, A&A, 358, 593.
+
+"""
 import os as _os
 import numpy as _np
 from pathlib import Path as _Path

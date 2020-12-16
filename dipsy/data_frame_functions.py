@@ -1,3 +1,6 @@
+"""
+functions to process the data frames (e.g. filtering or plotting histograms)
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 

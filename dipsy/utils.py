@@ -1,3 +1,12 @@
+"""
+Utility functions that do not fit anywhere else:
+
+- analytical functions like the Nuker profile, Planck function
+- helper functions like
+    - a colored line to plot tracks
+    - function to calculate grid interfaces
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection

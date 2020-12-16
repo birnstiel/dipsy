@@ -1,3 +1,6 @@
+"""
+Functions to calculate observables or read data from simulations
+"""
 import os
 import h5py
 
