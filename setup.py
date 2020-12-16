@@ -9,15 +9,28 @@ PACKAGENAME = 'dipsy'
 # the directory where this setup.py resides
 HERE = pathlib.Path(__file__).parent
 
+# function to parse the version from the init file
+
+
+def read_version():
+    with (HERE / PACKAGENAME / '__init__.py').open() as fid:
+        for line in fid:
+            if line.startswith('__version__'):
+                delim = '"' if '"' in line else "'"
+                return line.split(delim)[1]
+        else:
+            raise RuntimeError("Unable to find version string.")
+
+
 if __name__ == "__main__":
 
     setup(
         name=PACKAGENAME,
         description='Disk Population Synthesis Tools',
-        version='0.0.1',
+        version=read_version(),
         long_description=(HERE / "README.md").read_text(),
         long_description_content_type='text/markdown',
-        url='https://github.com/birnstiel/dipsy',
+        url='https://github.com/birnstiel/' + PACKAGENAME,
         author='Til Birnstiel',
         author_email='til.birnstiel@lmu.de',
         license='GPLv3',
@@ -31,5 +44,5 @@ if __name__ == "__main__":
             'astropy',
             'astroquery',
             'lifelines'],
-        zip_safe=False,
-        )
+        python_requires='>=3.6',
+    )

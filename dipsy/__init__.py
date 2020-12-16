@@ -1,6 +1,9 @@
 from . import data
 from . import utils
 from . import cgs_constants
+from .tracks import get_stellar_properties
+
+__version__ = '0.0.2'
 
 from .dipsy_functions import \
     Opacity, \
@@ -8,7 +11,8 @@ from .dipsy_functions import \
     get_observables, \
     get_powerlaw_dust_distribution, \
     read_dustpy_data, \
-    read_rosotti_data
+    read_rosotti_data, \
+    get_stellar_properties
 
 __all__ = [
     'data',
@@ -19,5 +23,6 @@ __all__ = [
     'get_observables',
     'get_powerlaw_dust_distribution',
     'read_dustpy_data',
-    'read_rosotti_data'
-    ]
+    'read_rosotti_data',
+    'get_stellar_properties'
+]
