@@ -278,7 +278,7 @@ def get_observables(r, sig_g, sig_d, a_max, T, opacity, lam, distance=140 * pc, 
     return observables(rf, flux_t, tau, I_nu, a, sig_da)
 
 
-def get_all_observables(d, opac, lam, amax=True, q=3.5):
+def get_all_observables(d, opac, lam, amax=True, q=3.5, flux_fraction=0.68):
     """Calculate the radius and total flux for all snapshots of a simulation
 
     Arguments:
@@ -300,10 +300,13 @@ def get_all_observables(d, opac, lam, amax=True, q=3.5):
     q : float
         size distribution exponent
 
+    flux_fraction : float
+        at which fraction of the total flux the effective radius is defined [-]
+
     Returns:
     --------
     rf : array
-        68% effective radii for all snapshots [cm]
+        e.g. 68% effective radii for all snapshots [cm]
 
     flux : array
         total flux for all snapshots [Jy]
@@ -323,7 +326,7 @@ def get_all_observables(d, opac, lam, amax=True, q=3.5):
         sig_d = d.sig_d
 
     for it in range(len(d.time)):
-        obs = get_observables(d.r, d.sig_g[it, :], sig_d[it], d.a_max[it, :], d.T[it, :], opac, lam, q=q, a=_a)
+        obs = get_observables(d.r, d.sig_g[it, :], sig_d[it], d.a_max[it, :], d.T[it, :], opac, lam, q=q, a=_a, flux_fraction=flux_fraction)
         rf += [obs.rf]
         flux += [obs.flux_t]
         tau += [obs.tau]
