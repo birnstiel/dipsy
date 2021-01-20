@@ -258,3 +258,16 @@ def read_from_hdf5(fname, simname):
             d[key] = group[key][()]
 
     return d
+
+
+def is_interactive():
+    """
+    Function to test if this code is executed interactively (in notebook or console) or if it is run as a script.
+
+    Returns:
+    --------
+    True if run in notebook or console, False if script.
+
+    """
+    import __main__ as main
+    return not hasattr(main, '__file__')
