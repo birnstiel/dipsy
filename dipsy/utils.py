@@ -236,28 +236,40 @@ def write_to_hdf5(fname, results):
                     group.create_dataset(key, data=val, compression='lzf')
 
 
-def read_from_hdf5(fname, simname):
+def read_from_hdf5(fname, simname=None):
     """Reads simulation from hdf5 file
-
 
     Parameters
     ----------
     fname : str | path
         hdf5 file name
 
-    simname : str
-        name of the group representing the simulation in the hdf5 file
+    simname : str | None
+        - if `None`, then all are read into a list of dicts
+        - if `str`, then the group with this name is read
 
     """
     with h5py.File(fname, 'r') as f:
-        group = f[simname]
+        simnames = [simname]
+        if simname is None:
+            simnames = list(f)
 
-        d = dict()
+        dicts = []
 
-        for key, value in group.items():
-            d[key] = group[key][()]
+        for name in simnames:
+            group = f[name]
 
-    return d
+            d = dict()
+
+            for key, value in group.items():
+                d[key] = group[key][()]
+
+            dicts += [d]
+
+    if simname is not None:
+        return dicts[0]
+    else:
+        return dicts
 
 
 def is_interactive():
