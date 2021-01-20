@@ -7,9 +7,12 @@ Utility functions that do not fit anywhere else:
     - function to calculate grid interfaces
 """
 
+import numbers
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
+import h5py
 
 from .cgs_constants import k_B, h, c_light
 
@@ -191,3 +194,43 @@ def get_interfaces_from_log_cell_centers(x):
     A = (B + 1) / 2.
     xi = np.append(x / A, x[-1] * B / A)
     return xi
+
+
+def write_to_hdf5(fname, results):
+    """writes simulations to hdf5
+
+    Writes one group for each entry in results.
+
+    Parameters
+    ----------
+    fname : str | path
+        hdf5 file name
+
+    results : list of dicts or namedtuples
+        each of these will become one group in the file
+
+    Raises
+    ------
+    ValueError
+        if entry in results is not a dict or namedtuple
+    """
+    with h5py.File(fname, 'w') as f:
+        for i, result in enumerate(results):
+
+            # create a group for each simulation
+
+            group = f.create_group(f'{i:07d}')
+
+            # this should work for namedtuples and dicts
+
+            if not isinstance(result, dict):
+                if hasattr(result, '_asdict'):
+                    result = result._asdict()
+                else:
+                    raise ValueError('result must be dict or namedtuple')
+
+            for key, val in result.items():
+                if isinstance(val, (numbers.Number, np.number)):
+                    group.create_dataset(key, data=val)
+                else:
+                    group.create_dataset(key, data=val, compression='lzf')
