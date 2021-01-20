@@ -13,3 +13,5 @@ R_sun = c.R_sun.cgs.value
 M_sun = c.M_sun.cgs.value
 Grav = c.G.cgs.value
 sigma_sb = c.sigma_sb.cgs.value
+
+mu = 2.3
