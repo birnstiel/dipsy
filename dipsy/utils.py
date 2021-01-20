@@ -234,3 +234,27 @@ def write_to_hdf5(fname, results):
                     group.create_dataset(key, data=val)
                 else:
                     group.create_dataset(key, data=val, compression='lzf')
+
+
+def read_from_hdf5(fname, simname):
+    """Reads simulation from hdf5 file
+
+
+    Parameters
+    ----------
+    fname : str | path
+        hdf5 file name
+
+    simname : str
+        name of the group representing the simulation in the hdf5 file
+
+    """
+    with h5py.File(fname, 'r') as f:
+        group = f[simname]
+
+        d = dict()
+
+        for key, value in group.items():
+            d[key] = group[key][()]
+
+    return d
