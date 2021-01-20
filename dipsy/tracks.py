@@ -144,6 +144,10 @@ class track(object):
             folder_name = 'Z' + z
 
         folder = _Path(self.track_dir) / folder_name
+
+        if not folder.is_dir():
+            self._download_files()
+
         if not folder.is_dir():
             raise FileNotFoundError(f'folder {folder_name} does not exist')
 
@@ -183,6 +187,7 @@ class track(object):
         self._track_data = _np.loadtxt(self.track_file)
         self._track_function = interp1d(self._track_data[:, self._it], self._track_data[:, self._mask].T)
 
+    @classmethod
     def _download_files(self, delete=True):
         """
         Downloads all the grid files from Lionel Siess' website and extracts the evolutionary track data files
