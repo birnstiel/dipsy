@@ -9,3 +9,5 @@ pc = c.pc.cgs.value
 jy_sas = (1 * u.Jy / u.arcsec**2).cgs.value
 year = (1 * u.year).cgs.value
 au = c.au.cgs.value
+R_sun = c.R_sun.cgs.value
+M_sun = c.M_sun.cgs.value
