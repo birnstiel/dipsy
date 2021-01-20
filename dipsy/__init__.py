@@ -3,7 +3,7 @@ from . import utils
 from . import cgs_constants
 from .tracks import get_stellar_properties
 
-__version__ = '0.0.2'
+__version__ = '0.0.3'
 
 from .dipsy_functions import \
     Opacity, \
