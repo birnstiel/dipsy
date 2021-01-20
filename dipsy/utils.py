@@ -8,6 +8,8 @@ Utility functions that do not fit anywhere else:
 """
 
 import numbers
+import sys
+from io import StringIO
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -283,3 +285,44 @@ def is_interactive():
     """
     import __main__ as main
     return not hasattr(main, '__file__')
+
+
+class Capturing(list):
+    """Context manager capturing standard output of whatever is called in it.
+
+    Examples
+    --------
+    >>> with Capturing() as output:
+    >>>     do_something(my_object)
+
+    `output` is now a list containing the lines printed by the function call.
+
+    This can also be concatenated
+
+    >>> with Capturing() as output:
+    >>>    print 'hello world'
+    >>>
+    >>> print('displays on screen')
+    >>>
+    >>> with Capturing(output) as output:
+    >>>     print('hello world2')
+    >>>
+    >>> print('done')
+    >>> print('output:', output)
+    done
+    output: ['hello world', 'hello world2']
+
+    Copied from [this stackoverflow answer](http://stackoverflow.com/a/16571630/2108771)
+
+    """
+
+    def __enter__(self):
+        """Start capturing output when entering the context"""
+        self._stdout = sys.stdout
+        sys.stdout = self._stringio = StringIO()
+        return self
+
+    def __exit__(self, *args):
+        """Get & return the collected output when exiting context"""
+        self.extend(self._stringio.getvalue().splitlines())
+        sys.stdout = self._stdout
