@@ -218,24 +218,43 @@ def write_to_hdf5(fname, results):
     """
     with h5py.File(fname, 'w') as f:
         for i, result in enumerate(results):
+            hdf5_add_dict(f, i, result)
 
-            # create a group for each simulation
 
-            group = f.create_group(f'{i:07d}')
+def hdf5_add_dict(f, i, result):
+    """addds dict as group to hdf5 file
 
-            # this should work for namedtuples and dicts
+    Parameters
+    ----------
+    f : open, writable h5py file object
+        file into which to store the data
+    i : int
+        index -- will be used to create a length-7, zero padded string of that number as index
+    result : dict | namedtuple
+        data to store in the hdf5 file
 
-            if not isinstance(result, dict):
-                if hasattr(result, '_asdict'):
-                    result = result._asdict()
-                else:
-                    raise ValueError('result must be dict or namedtuple')
+    Raises
+    ------
+    ValueError
+        if dataset is not a dict or namedtuple (or can be converted to a dict with its `_asdict` method)
+    """
+    # create a group for each simulation
 
-            for key, val in result.items():
-                if isinstance(val, (numbers.Number, np.number)):
-                    group.create_dataset(key, data=val)
-                else:
-                    group.create_dataset(key, data=val, compression='lzf')
+    group = f.create_group(f'{i:07d}')
+
+    # this should work for namedtuples and dicts
+
+    if not isinstance(result, dict):
+        if hasattr(result, '_asdict'):
+            result = result._asdict()
+        else:
+            raise ValueError('result must be dict or namedtuple')
+
+    for key, val in result.items():
+        if isinstance(val, (numbers.Number, np.number)):
+            group.create_dataset(key, data=val)
+        else:
+            group.create_dataset(key, data=val, compression='lzf')
 
 
 def read_from_hdf5(fname, simname=None):
