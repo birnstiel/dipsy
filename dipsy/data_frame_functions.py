@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from .data import T17_Fmm_corr
+from .data import Tripathi2017
 
 
 def get_param_values(df, param_names):
@@ -75,7 +76,7 @@ def histogram_corner(d, param_values, param_interfaces=None, param_label=None, f
                 xtick_val = []
 
             ax.xaxis.set_ticks(xtick_pos)
-            ax.xaxis.set_ticklabels(xtick_val, rotation=45)
+            ax.xaxis.set_ticklabels([f'{v:.4g}' for v in xtick_val], rotation=45)
 
             # SET Y-LABELS
 
@@ -89,7 +90,7 @@ def histogram_corner(d, param_values, param_interfaces=None, param_label=None, f
                 ytick_val = []
 
             ax.yaxis.set_ticks(ytick_pos)
-            ax.yaxis.set_ticklabels(ytick_val, rotation=45)
+            ax.yaxis.set_ticklabels([f'{v:.4g}' for v in ytick_val], rotation=45)
 
     # final figure styling
 
@@ -253,15 +254,86 @@ def histogram2D(d, x_name, y_name, param_values, param_interfaces=None, param_la
 
     xvalues = param_values[x_name]
     xpos = np.arange(len(xvalues))
+    print('test')
     ax.xaxis.set_ticks(xpos)
-    ax.xaxis.set_ticklabels(np.array(xvalues)[xpos], rotation=45)
+    ax.xaxis.set_ticklabels([f'{xvalues[i]:.4g}' for i in range(len(xvalues))], rotation=45)
 
     yvalues = param_values[y_name]
     ypos = np.arange(len(yvalues))
     ax.yaxis.set_ticks(ypos)
-    ax.yaxis.set_ticklabels(np.array(yvalues)[ypos], rotation=45)
+    ax.yaxis.set_ticklabels([f'{yvalues[i]:.4g}' for i in range(len(yvalues))], rotation=45)
 
     ax.set_xlabel(x_name)
     ax.set_ylabel(y_name)
 
     return f
+
+
+def heatmap(d, i_snap, f=None, ax=None, observations=True, correlation=True, n_sig=1, **kwargs):
+    """Draws a hexbin heatmap on the FL correlation
+
+    Parameters
+    ----------
+    d : pandas data frame
+        frame containing 'rf_t' and 'flux_t' arrays, will plot index i_snap
+    i_snap : int
+        the time index when to plot it
+    f : figure handle, optional
+        if figure exists pass it here, by default None
+    ax : axis handle, optional
+        if axis exists, pass it here, by default None
+    observations : bool, optional
+        if true, plot the Tripathi sample on top, by default True
+    correlation : bool, optional
+        if true, plot the Tripathi correlation on top, by default True
+    n_sig : float, optional
+        numbers of sigma to plot around the correlation, by default 1
+
+    Other keywords are passed to plt.hexbin
+
+    Returns
+    -------
+    f: figure handle
+    ax: axis handle
+    """
+
+    if f is None:
+        f = plt.figure()
+    if ax is None:
+        ax = f.add_subplot()
+
+    Tripathi2017().plot_rosotti(ax=ax)
+
+    # make the line solid white
+
+    line = ax.get_lines()[0]
+    if correlation:
+        line.set_color('w')
+        line.set_linestyle('-')
+    else:
+        line.remove()
+
+    # make the dots white
+
+    for col in ax.findobj(match=lambda o: 'Path' in type(o).__name__):
+        if observations:
+            col.set_facecolor('w')
+        else:
+            col.remove()
+
+    # draw the heat map
+
+    extent = kwargs.pop('extent', [*ax.set_xlim(), *ax.set_ylim()])
+    kwargs['gridsize'] = kwargs.pop('gridsize', 35)
+
+    _r = [row[i_snap] for row in d['rf_t']]
+    _f = [row[i_snap] for row in d['flux_t']]
+    ax.hexbin(np.log10(_r), np.log10(_f), zorder=-100, **kwargs, extent=extent)
+
+    # add +/- sigma lines
+    if correlation:
+        x = np.logspace(1, 2.5, 50)
+        ax.plot(np.log10(x), np.log10(T17_Fmm_corr(x, sigma=n_sig)), 'w--')
+        ax.plot(np.log10(x), np.log10(T17_Fmm_corr(x, sigma=-n_sig)), 'w--')
+
+    return f, ax
