@@ -2,3 +2,6 @@
 __pycache__
 dipsy.egg-info/
 dipsy/tracks
+build/
+*.cpython*
+*.mod

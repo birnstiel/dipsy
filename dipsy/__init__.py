@@ -2,8 +2,12 @@ from . import data
 from . import utils
 from . import cgs_constants
 from .tracks import get_stellar_properties
+try:
+    from dipsy._fortran_module import fmodule as fortran
+except ImportError:
+    print('fortran module not available')
 
-__version__ = '0.0.3'
+__version__ = '0.0.4'
 
 from .dipsy_functions import \
     Opacity, \

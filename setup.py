@@ -1,8 +1,11 @@
 """
 Setup file for package `dipsy`.
 """
-from setuptools import setup
+import setuptools  # noqa
 import pathlib
+import warnings
+
+from numpy.distutils.core import Extension, setup
 
 PACKAGENAME = 'dipsy'
 
@@ -24,25 +27,37 @@ def read_version():
 
 if __name__ == "__main__":
 
-    setup(
-        name=PACKAGENAME,
-        description='Disk Population Synthesis Tools',
-        version=read_version(),
-        long_description=(HERE / "README.md").read_text(),
-        long_description_content_type='text/markdown',
-        url='https://github.com/birnstiel/' + PACKAGENAME,
-        author='Til Birnstiel',
-        author_email='til.birnstiel@lmu.de',
-        license='GPLv3',
-        packages=[PACKAGENAME],
-        package_dir={PACKAGENAME: PACKAGENAME},
-        package_data={PACKAGENAME: ['datasets/*.pickle']},
-        include_package_data=True,
-        install_requires=[
-            'numpy',
-            'matplotlib',
-            'astropy',
-            'astroquery',
-            'lifelines'],
-        python_requires='>=3.6',
-    )
+    extensions = [
+        Extension(name='dipsy._fortran_module', sources=['dipsy/fortran_module.f90'])
+    ]
+
+    def setup_function(extensions):
+        setup(
+            name=PACKAGENAME,
+            description='Disk Population Synthesis Tools',
+            version=read_version(),
+            long_description=(HERE / "README.md").read_text(),
+            long_description_content_type='text/markdown',
+            url='https://github.com/birnstiel/' + PACKAGENAME,
+            author='Til Birnstiel',
+            author_email='til.birnstiel@lmu.de',
+            license='GPLv3',
+            packages=[PACKAGENAME],
+            package_dir={PACKAGENAME: PACKAGENAME},
+            package_data={PACKAGENAME: ['datasets/*.pickle']},
+            include_package_data=True,
+            ext_modules=extensions,
+            install_requires=[
+                'numpy',
+                'matplotlib',
+                'astropy',
+                'astroquery',
+                'lifelines'],
+            python_requires='>=3.6',
+        )
+
+    try:
+        setup_function(extensions)
+    except BaseException:
+        warnings.warn('fortran routines not available!')
+        setup_function([])

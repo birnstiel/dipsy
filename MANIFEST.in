@@ -2,3 +2,4 @@ include README.md
 include LICENSE
 include notebooks/*.ipynb
 include dipsy/datasets/*.pickle
+include dipsy/*.f90
