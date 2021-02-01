@@ -15,9 +15,12 @@ contains
         doubleprecision, intent(IN) :: x(nx), y(nx)
         doubleprecision :: ym(nx)
 
-        if ((params(1) < -10) .or. (params(1) > 10)) then
-            lnp_pwr = inf_neg()
-        elseif ((params(3) < x(1)) .or. (params(3) > x(nx))) then
+        if ( &
+            (params(1) < 0) &
+            .or. (params(2) < -10) &
+            .or. (params(2) > 10) &
+            .or. (params(3) < x(1)) &
+            .or. (params(3) > x(nx))) then
             lnp_pwr = inf_neg()
         else
             where (x < params(3))
