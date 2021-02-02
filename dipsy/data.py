@@ -320,7 +320,7 @@ class tychoniec_dataset(mm_survey_dataset):
         v = Vizier(columns=['Name'])
         v.ROW_LIMIT = -1
         self.names = v.get_catalogs(self.catalog)[0]
-        self.names = [s[0].decode() for s in self.names.as_array()]
+        self.names = [s[0] for s in self.names.as_array()]
 
         # include only the ones that are in final list
 
