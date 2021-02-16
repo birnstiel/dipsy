@@ -352,4 +352,4 @@ ansdell16 = mm_survey_dataset(name='Ansdell16',   paper='Ansdell et al. 2016',  
 barenfeld16 = mm_survey_dataset(name='Barenfeld16', paper='Barenfeld et al. 2016', catalog='J/ApJ/827/142/stars',      columns=['Snu', 'e_Snu'],             unit=u.mJy, d=145*u.pc, lam=880*u.um)  # noqa
 pascucci16 = mm_survey_dataset(name='Pascucci16',  paper='Pascucci et al. 2016',  catalog='J/ApJ/831/125/sources',    columns=['Fnu', 'e_Fnu'],             unit=u.mJy, d=160*u.pc, lam=887*u.um)  # noqa
 andrews13 = mm_survey_dataset(name='Andrews13',   paper='Andrews et al. 2013',   catalog='J/ApJ/771/129/table2',     columns=['F1.3', 'e_F1.3', 'l_F1.3'], unit=u.Jy,  d=140*u.pc, lam=1.3*u.mm)  # noqa
-tychoniec18 = tychoniec_dataset(name='Tychoniec18', paper='Tychoniec et al. 2018', catalog='J/ApJS/238/19/protostars', columns=['Fc9', None, 'l_Fc9'],       unit=u.mJy, d=293*u.pc, lam=9*u.mm)  # noqa
+# tychoniec18 = tychoniec_dataset(name='Tychoniec18', paper='Tychoniec et al. 2018', catalog='J/ApJS/238/19/protostars', columns=['Fc9', None, 'l_Fc9'],       unit=u.mJy, d=293*u.pc, lam=9*u.mm)  # noqa
