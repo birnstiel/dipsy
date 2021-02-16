@@ -291,20 +291,23 @@ class mm_survey_dataset():
             self.e_Mearth = (self.errors * self.unit * self.d**2 / (Bnu * kappa)).to(c.M_earth).value
 
     def calculate_KaplanMaier(self):
-        values = self.Mearth
-        limits = self.flag
-        kmf = KaplanMeierFitter()
-        kmf.fit_left_censoring(values, limits)
+        if not lifelines_available:
+            warnings.warn('lifelines module not available')
+        else:
+            values = self.Mearth
+            limits = self.flag
+            kmf = KaplanMeierFitter()
+            kmf.fit_left_censoring(values, limits)
 
-        x_values = kmf.cumulative_density_.index.values
-        cdfm1 = 1. - kmf.cumulative_density_.values
-        minmax = 1. - kmf.confidence_interval_.values
-        minmax[-1] = np.array([0., 0.])
+            x_values = kmf.cumulative_density_.index.values
+            cdfm1 = 1. - kmf.cumulative_density_.values
+            minmax = 1. - kmf.confidence_interval_.values
+            minmax[-1] = np.array([0., 0.])
 
-        self.km_x = x_values
-        self.km_y_low = minmax[:, 0]
-        self.km_y_high = minmax[:, 1]
-        self.km_y = cdfm1[:, 0]
+            self.km_x = x_values
+            self.km_y_low = minmax[:, 0]
+            self.km_y_high = minmax[:, 1]
+            self.km_y = cdfm1[:, 0]
 
 
 class tychoniec_dataset(mm_survey_dataset):
