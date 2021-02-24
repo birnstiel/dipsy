@@ -23,7 +23,7 @@ contains
             .or. (params(3) > x(nx))) then
             lnp_pwr = inf_neg()
         else
-            call pwr1(params, x, ym)
+            call pwr1(params, x, ym, nx)
             lnp_pwr = sum(-(MIN(1d300, ym - y)**2/(1d-100 + 2d0*(0.1d0*y)**2)))
             if (lnp_pwr .ne. lnp_pwr) then
                 lnp_pwr = inf_neg()
