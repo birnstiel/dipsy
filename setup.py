@@ -51,8 +51,7 @@ if __name__ == "__main__":
                 'numpy',
                 'matplotlib',
                 'astropy',
-                'astroquery',
-                'lifelines'],
+                'astroquery'],
             python_requires='>=3.6',
         )
 
