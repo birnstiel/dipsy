@@ -8,6 +8,7 @@ import sys
 from multiprocessing import Pool
 import time as walltime
 from pathlib import Path
+from functools import partial
 
 import h5py
 import dipsy
@@ -22,7 +23,6 @@ def main():
     # this first parser is the default parser of general options
     RTHF = argparse.RawTextHelpFormatter
     PARSER = argparse.ArgumentParser(description=__doc__, formatter_class=RTHF, conflict_handler='resolve')
-    PARSER.add_argument('file', help='HDF5 file with the simulation data', type=str)
     PARSER.add_argument('analysis', help='python file with analysis function', type=str)
     PARSER.add_argument('-c', '--cores', help='how many cores to use', type=int, default=1)
     PARSER.add_argument('-h', '--help', help='display help', action='store_true')
@@ -31,8 +31,9 @@ def main():
     ARGS, unknown_args = PARSER.parse_known_args()
     if ARGS.help:
         unknown_args = ['-h'] + unknown_args
+        PARSER.print_help()
 
-    # %% now import the analysis:
+    # %% ------- now import the analysis function ------------
 
     analysis_file = Path(ARGS.analysis).resolve()
 
@@ -41,9 +42,9 @@ def main():
         sys.exit(1)
 
     print(f'importing analysis function from {analysis_file}')
-    analysis = __import__(analysis_file.stem, globals=globals())
+    analysis = dipsy.utils.remote_import(analysis_file)
 
-    # %% now that we imported the analysis:
+    # %% ------------- now that we imported the analysis -------------
     # - get the second parser
     # - parse the other arguments
     # - based on the arguments, determine any specific settings
@@ -52,7 +53,7 @@ def main():
 
     settings = analysis.process_args(ARGS2)
 
-    fname_in = ARGS.file
+    fname_in = ARGS2.file
     fname_out = settings['fname_out']
 
     # %% -------- open the data file -----------
@@ -72,12 +73,11 @@ def main():
     n_sim = len(indices)
     keys = [keys[i] for i in indices]
 
-    for i, res in enumerate(pool.imap(
-            lambda key: analysis.parallel_analyze(key, settings),
-            keys)):
-        dipsy.utils.hdf5_add_dict(fname_out, keys[i], res)
-        del res
-        print(f'\rRunning ... {(i+1) / n_sim:.1%}', end='', flush=True)
+    with h5py.File(Path(fname_out).with_suffix('.hdf5'), 'w') as f:
+        for i, res in enumerate(pool.imap(partial(analysis.parallel_analyze, settings=settings), keys)):
+            dipsy.utils.hdf5_add_dict(f, keys[i], res)
+            del res
+            print(f'\rRunning ... {(i+1) / n_sim:.1%}', end='', flush=True)
 
     print('\r--------- DONE ---------')
 

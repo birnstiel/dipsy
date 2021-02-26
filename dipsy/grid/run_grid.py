@@ -29,7 +29,7 @@ def main():
     PARSER.add_argument('-t', '--test', help='for testing: only run this single model', type=int, default=None)
     ARGS = PARSER.parse_args()
 
-    # %% ----------- get the grid parameters --------------
+    # %% ----------- import the grid dynamically --------------
 
     grid_file = Path(ARGS.grid).resolve()
 
@@ -38,7 +38,9 @@ def main():
         sys.exit(1)
 
     print(f'importing grid from {grid_file}')
-    grid = __import__(grid_file.stem, globals=globals())
+    grid = dipsy.utils.remote_import(grid_file)
+
+    # %% ----------- get the grid parameters --------------
 
     param = grid.param
     filename = grid.filename

@@ -10,6 +10,8 @@ Utility functions that do not fit anywhere else:
 import numbers
 import sys
 from io import StringIO
+import importlib.util
+from pathlib import Path
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -228,8 +230,9 @@ def hdf5_add_dict(f, i, result):
     ----------
     f : open, writable h5py file object
         file into which to store the data
-    i : int
+    i : int | str
         index -- will be used to create a length-7, zero padded string of that number as index
+        if it is already such a sting, it will just use it
     result : dict | namedtuple
         data to store in the hdf5 file
 
@@ -239,8 +242,12 @@ def hdf5_add_dict(f, i, result):
         if dataset is not a dict or namedtuple (or can be converted to a dict with its `_asdict` method)
     """
     # create a group for each simulation
+    if type(i) is str:
+        key = i
+    else:
+        key = f'{i:07d}'
 
-    group = f.create_group(f'{i:07d}')
+    group = f.create_group(key)
 
     # this should work for namedtuples and dicts
 
@@ -345,3 +352,15 @@ class Capturing(list):
         """Get & return the collected output when exiting context"""
         self.extend(self._stringio.getvalue().splitlines())
         sys.stdout = self._stdout
+
+
+def remote_import(filename):
+    "imports remote python file `filename`"
+    filename = Path(filename)
+    module_name = filename.stem
+    file_path = str(filename.absolute())
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
