@@ -66,19 +66,24 @@ def main():
 
     results = []
     n_sim = len(param_val)
+    n_failed = 0
 
     with h5py.File(Path(filename).with_suffix('.hdf5'), 'w') as f:
         for i, res in enumerate(pool.imap(parallel_run, param_val)):
-            res = res._asdict()
-            res['params'] = param_val[i]
-            dipsy.utils.hdf5_add_dict(f, i, res)
+            if res is False:
+                n_failed += 1
+            else:
+                res = res._asdict()
+                res['params'] = param_val[i]
+                dipsy.utils.hdf5_add_dict(f, i, res)
+
             del res
             print(f'\rRunning ... {(i+1) / n_sim:.1%}', end='', flush=True)
 
     print('\r--------- DONE ---------')
 
     sims_done = walltime.time()
-    print('{} of {} simulations finished in {:.3g} minutes'.format(len(results) - results.count(False), len(results), (sims_done - start) / 60))
+    print('{} of {} simulations finished in {:.3g} minutes'.format(n_sim - n_failed, n_sim, (sims_done - start) / 60))
 
 
 if __name__ == '__main__':
