@@ -50,27 +50,28 @@ contains
     subroutine pwr2_logit(pars, x, y, nx)
         implicit none
         integer, intent(IN) :: nx
-        doubleprecision, intent(IN) :: pars(6)
+        doubleprecision, intent(IN) :: pars(7)
         doubleprecision, intent(IN) :: x(nx)
         doubleprecision, intent(OUT):: y(nx)
-        ! this function has 6 parameters:
+        ! this function has 7 parameters:
         ! 1: normalization
         ! 2: brightness drop at dust line
         ! 3: outer power-law r**-p
         ! 4: inner power-law r**-p
-        ! 5: outer exponential taper
-        ! 6: dust line position
+        ! 5: position of outer exponential taper
+        ! 6: position of power-law transition
+        ! 7: position of dust line
 
-        ! logistic taper by factor pars(2) at position pars(6) with
-        ! a width of 0.1 * pars(6)
+        ! logistic taper by factor pars(2) at position pars(7) with
+        ! a width of 0.1 * pars(7)
 
-        y = 1 - pars(2)/(1d0 + exp(-(x - pars(6))/(0.1*pars(6))))
+        y = 1 - pars(2)/(1d0 + exp(-(x - pars(7))/(0.1*pars(7))))
 
-        ! two power laws smoothly connected
+        ! two power laws smoothly connected at pars(6)
 
         y = y*pars(1)*(((x/pars(6))**-pars(4))**-2 + ((x/pars(6))**-pars(3))**-2)**(-0.5)
 
-        ! exponential taper
+        ! exponential taper at pars(5)
 
         y = y*exp(-(x/pars(5))**4)
     end subroutine pwr2_logit
@@ -83,7 +84,7 @@ contains
         doubleprecision :: ym(nx)
 
         if ( &
-            (params(1) < 0) &
+            (params(1) < 0d0) &
             .or. (params(2) < -10) &
             .or. (params(2) > 10) &
             .or. (params(3) < x(1)) &
@@ -91,7 +92,7 @@ contains
             lnp_pwr = inf_neg()
         else
             call pwr1(params, x, ym, nx)
-            lnp_pwr = sum(-(MIN(1d100, ym - y)**2/(2d0*(MIN(crop, 0.1d0*y))**2)))
+            lnp_pwr = sum(-(MIN(1d100, ym - y)**2/(2d0*(MAX(crop, 0.1d0*y))**2)))
             if (lnp_pwr .ne. lnp_pwr) then
                 lnp_pwr = inf_neg()
             end if
@@ -124,7 +125,7 @@ contains
         else
             call pwr2(params, x, ym, nx)
 
-            lnp_pwr2 = sum(-(MIN(1d100, ym - y)**2/(2d0*(MIN(crop, 0.1d0*y))**2)))
+            lnp_pwr2 = sum(-(MIN(1d100, ym - y)**2/(2d0*(MAX(crop, 0.1d0*y))**2)))
             if (lnp_pwr2 .ne. lnp_pwr2) then
                 lnp_pwr2 = inf_neg()
             end if
@@ -135,7 +136,7 @@ contains
     doubleprecision function lnp_pwr2_logit(params, x, y, nx)
         implicit none
         integer, intent(IN) :: nx
-        doubleprecision, intent(IN) :: params(6)
+        doubleprecision, intent(IN) :: params(7)
         doubleprecision, intent(IN) :: x(nx), y(nx)
         doubleprecision :: ym(nx)
         ! this function has 6 parameters:
@@ -143,8 +144,9 @@ contains
         ! 2: brightness drop at dust line
         ! 3: outer power-law r**-p
         ! 4: inner power-law r**-p
-        ! 5: outer exponential taper
-        ! 6: dust line position
+        ! 5: position of exponential taper
+        ! 6: position of power-law transition
+        ! 7: position of dust line
 
         if ( &
             (params(1) < 0) &
@@ -158,7 +160,10 @@ contains
             .or. (params(5) > x(nx)) &
             .or. (params(6) < x(1)) &
             .or. (params(6) > x(nx)) &
+            .or. (params(7) < x(1)) &
+            .or. (params(7) > x(nx)) &
             .or. (params(6) > params(5)) &
+            .or. (params(7) > params(5)) &
             ) then
             lnp_pwr2_logit = inf_neg()
         else
