@@ -254,7 +254,6 @@ def histogram2D(d, x_name, y_name, param_values, param_interfaces=None, param_la
 
     xvalues = param_values[x_name]
     xpos = np.arange(len(xvalues))
-    print('test')
     ax.xaxis.set_ticks(xpos)
     ax.xaxis.set_ticklabels([f'{xvalues[i]:.4g}' for i in range(len(xvalues))], rotation=45)
 
