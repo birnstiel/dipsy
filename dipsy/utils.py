@@ -316,6 +316,12 @@ def is_interactive():
 class Capturing(list):
     """Context manager capturing standard output of whatever is called in it.
 
+    Keywords
+    --------
+    stderr : bool
+        if True will capture the standard error instead of standard output.
+        defaulats to False
+
     Examples
     --------
     >>> with Capturing() as output:
@@ -326,32 +332,50 @@ class Capturing(list):
     This can also be concatenated
 
     >>> with Capturing() as output:
-    >>>    print 'hello world'
-    >>>
+    >>>    print('hello world')
     >>> print('displays on screen')
-    >>>
-    >>> with Capturing(output) as output:
+    displays on screen
+
+    >>> with output:
     >>>     print('hello world2')
-    >>>
-    >>> print('done')
     >>> print('output:', output)
-    done
     output: ['hello world', 'hello world2']
 
-    Copied from [this stackoverflow answer](http://stackoverflow.com/a/16571630/2108771)
+    >>> import warnings
+    >>> with output, Capturing(stderr=True) as err:
+    >>>     print('hello world2')
+    >>>     warnings.warn('testwarning')
+    >>> print(output)
+    output: ['hello world', 'hello world2']
+
+    >>> print('error:', err[0].split(':')[-1])
+    error:  testwarning
+
+    Mostly copied from [this stackoverflow answer](http://stackoverflow.com/a/16571630/2108771)
 
     """
 
+    def __init__(self, /, *args, stderr=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._error = stderr
+
     def __enter__(self):
         """Start capturing output when entering the context"""
-        self._stdout = sys.stdout
-        sys.stdout = self._stringio = StringIO()
+        if self._error:
+            self._std = sys.stderr
+            sys.stderr = self._stringio = StringIO()
+        else:
+            self._std = sys.stdout
+            sys.stdout = self._stringio = StringIO()
         return self
 
     def __exit__(self, *args):
         """Get & return the collected output when exiting context"""
         self.extend(self._stringio.getvalue().splitlines())
-        sys.stdout = self._stdout
+        if self._error:
+            sys.stderr = self._std
+        else:
+            sys.stdout = self._std
 
 
 def remote_import(filename):
