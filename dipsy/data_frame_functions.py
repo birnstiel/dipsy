@@ -27,7 +27,7 @@ def make_interfaces(param_values):
     return param_interfaces
 
 
-def histogram_corner(d, param_values, param_interfaces=None, param_label=None, f=None, vmax=1000.):
+def histogram_corner(d, param_values, param_interfaces=None, param_label=None, f=None, vmax=1000., percent=False, n_total=None):
     """
     Produce a "corner plot" where all the parameter combinations
     are shown as 2D histograms.
@@ -62,7 +62,21 @@ def histogram_corner(d, param_values, param_interfaces=None, param_label=None, f
             # plot the histograms
 
             H = np.histogram2d(x, y, bins=[param_interfaces[x_name], param_interfaces[y_name]])
-            m = ax.imshow(H[0].T, vmin=0, vmax=vmax, origin='lower')
+            counts = H[0].T
+
+            if percent:
+                if percent == 'per_bin':
+                    n_bins = len(param_values[x_name]) * len(param_values[y_name])
+                elif percent == 'total':
+                    n_bins = 1
+                else:
+                    raise ValueError('percent must be False, \'per_bin\', or \'total\'.')
+                if n_total is None:
+                    n_total = len(x)
+
+                counts *= 100 / n_total * n_bins
+
+            m = ax.imshow(counts, vmin=0, vmax=vmax, origin='lower')
 
             # SET X-LABELS
 
@@ -226,8 +240,56 @@ def filter_function(row, i0=0, i1=-1, dex_scatter=0.38, **kwargs):
     return np.all((distance > corr[0]) & (distance < corr[1]))
 
 
-def histogram2D(d, x_name, y_name, param_values, param_interfaces=None, param_label=None, f=None, ax=None, vmax=1000):
+def histogram2D(d, x_name, y_name, param_values, param_interfaces=None, param_label=None, f=None, ax=None, vmax=1000, percent=False, n_total=None):
+    """plot a 2D histogram of the samples in `d`.
 
+    The key `x_name` and `y_name` will be the x and y axis. Their
+    nicer names can be given in param_label. By default, counts are
+    shown, but this can be translated to percentages per bin where
+    the total number of values can also be rescaled with `n_total`.
+
+    Parameters
+    ----------
+    d : pandas.DataFrame
+        the data to be plotted. Each entry should at least have `x_name` and `y_name`.
+    x_name : str
+        name of the attribute to become the x-axis
+    y_name : str
+        name of the attribute to become the y-axis
+    param_values : dict
+        what individual unique values should exist in the attributes `x_name` and `y_name` in `d`.
+    param_interfaces : dict, optional
+        interfaces for the binning, by default None
+    param_label : dict, optional
+        contain a nicer string (e.g. using latex) for `x_name` and `y_name`, by default None
+    f : figure handle, optional
+        plot into this figure if given, else create one, by default None
+    ax : axis handle, optional
+        plot into this axis if given else create new one, by default None
+    vmax : scalar, optional
+        maxiumum value for the color scale, by default 1000
+    percent : bool | string, optional
+        by default False
+        if False: plot counts
+        if 'per_bin': assume equal distribution over bins, so
+            if there are 100 samples, and 2x2 bins, then uniform distribution
+            means every bin would have 25. A bin with 25 samples is then showing
+            100%.
+        if 'total': plot percent out of total number
+            if there are 100 samples, and 2x2 bins, then uniform distribution
+            means every bin is at 25%
+    n_total : int, optional
+        number of total samples used to calculate the percentages, by default None
+        for example if we have 100 samples equally distributed on 2x2 bins, then 
+        each bin would show 100% if `percent=='per_bin'`. But if we are only showing
+        a subset of sample out of 200 total samples, we can set `n_total=200` to display
+        50% in each bin.
+
+    Returns
+    -------
+    figure handle
+        the handle to the figure into which the histogram was drawn.
+    """
     param_names = list(param_values.keys())
 
     if param_interfaces is None:
@@ -244,12 +306,30 @@ def histogram2D(d, x_name, y_name, param_values, param_interfaces=None, param_la
     x = d[x_name].values
     y = d[y_name].values
 
+    # get the 2d histogram counts
+
     H = np.histogram2d(
         x, y,
         bins=[param_interfaces[x_name], param_interfaces[y_name]]
     )
+    counts = H[0].T
 
-    m = ax.imshow(H[0].T, vmin=0, vmax=vmax, origin='lower')
+    # convert to percentages if desired
+
+    if percent:
+        if percent == 'per_bin':
+            n_bins = len(param_values[x_name]) * len(param_values[y_name])
+        elif percent == 'total':
+            n_bins = 1
+        else:
+            raise ValueError('percent must be False, \'per_bin\', or \'total\'.')
+        if n_total is None:
+            n_total = len(x)
+        counts *= 100 / n_total * n_bins
+
+    # plot the counts
+
+    m = ax.imshow(counts, vmin=0, vmax=vmax, origin='lower')
     plt.colorbar(m)
 
     xvalues = param_values[x_name]
@@ -262,8 +342,8 @@ def histogram2D(d, x_name, y_name, param_values, param_interfaces=None, param_la
     ax.yaxis.set_ticks(ypos)
     ax.yaxis.set_ticklabels([f'{yvalues[i]:.4g}' for i in range(len(yvalues))], rotation=45)
 
-    ax.set_xlabel(x_name)
-    ax.set_ylabel(y_name)
+    ax.set_xlabel(param_label[x_name])
+    ax.set_ylabel(param_label[y_name])
 
     return f
 
