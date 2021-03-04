@@ -72,17 +72,25 @@ def main():
 
     n_sim = len(indices)
     keys = [keys[i] for i in indices]
+    failed_keys = []
 
     with h5py.File(Path(fname_out).with_suffix('.hdf5'), 'w') as f:
         for i, res in enumerate(pool.imap(partial(analysis.parallel_analyze, settings=settings), keys)):
-            dipsy.utils.hdf5_add_dict(f, keys[i], res)
-            del res
+            if res is False:
+                failed_keys += [keys[i]]
+            else:
+                dipsy.utils.hdf5_add_dict(f, keys[i], res)
+                del res
             print(f'\rRunning ... {(i+1) / n_sim:.1%}', end='', flush=True)
 
     print('\r--------- DONE ---------')
 
     end = walltime.time()
-    print('{} simulations analyzed in {:.3g} minutes'.format(n_sim, (end - start) / 60))
+    print('{} of {} simulations analyzed in {:.3g} minutes'.format(n_sim - len(failed_keys), n_sim, (end - start) / 60))
+    if len(failed_keys) > 0:
+        print('Analysis failed for the following keys:')
+        for key in failed_keys:
+            print('- ' + key)
 
 
 if __name__ == '__main__':
