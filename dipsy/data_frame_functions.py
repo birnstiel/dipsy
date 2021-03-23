@@ -114,7 +114,10 @@ def histogram_corner(d, param_values, param_interfaces=None, param_label=None, f
     pos1 = f.get_axes()[N].get_position()
     cax = f.add_axes([pos1.x0, pos0.y0, pos0.width / 20, pos0.height])
     cb = plt.colorbar(m, cax=cax)
-    cb.set_label('number of simulations')
+    if percent is False:
+        cb.set_label('number of simulations')
+    else:
+        cb.set_label('fraction [%]')
 
     return f
 
