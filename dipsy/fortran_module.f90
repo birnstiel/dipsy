@@ -53,6 +53,7 @@ contains
         doubleprecision, intent(IN) :: pars(7)
         doubleprecision, intent(IN) :: x(nx)
         doubleprecision, intent(OUT):: y(nx)
+        doubleprecision :: r0
         ! this function has 7 parameters:
         ! 1: normalization
         ! 2: brightness drop at dust line
@@ -62,10 +63,20 @@ contains
         ! 6: position of power-law transition
         ! 7: position of dust line
 
-        ! logistic taper by factor pars(2) at position pars(7) with
-        ! a width of 0.1 * pars(7)
+        ! logistic taper by factor pars(2) at position r0 with
+        ! a width of 0.1 * r0
+        ! r0 is the center of the logit function, but we want
+        ! the parameter pars(7) to be the "outer end" of that logit
+        ! transition, so we define this at being 90% in log space between
+        ! the left (=1) and the right (=1-pars(2)) limit of the logit function.
 
-        y = 1 - pars(2)/(1d0 + exp(-(x - pars(7))/(0.1*pars(7))))
+        if (pars(2) > 1e-8) then
+            r0 = pars(7)/(1d0 + 0.1d0*log(pars(2)/((1d0 - pars(2))**0.9d0 + pars(2) - 1d0) - 1d0))
+        else
+            r0 = pars(7)/(1d0 + 0.1d0*log(9d0))
+        end if
+
+        y = 1 - pars(2)/(1d0 + exp(-(x - r0)/(0.1*r0)))
 
         ! two power laws smoothly connected at pars(6)
 
@@ -75,6 +86,22 @@ contains
 
         y = y*exp(-(x/pars(5))**4)
     end subroutine pwr2_logit
+
+    subroutine lbp_profile(pars, x, y, nx)
+        implicit none
+        integer, intent(IN) :: nx
+        doubleprecision, intent(IN) :: pars(3)
+        doubleprecision, intent(IN) :: x(nx)
+        doubleprecision, intent(OUT):: y(nx)
+        ! this is the lynden-bell & pringle self-similar profile
+        ! the three parameters are
+        ! 1: normalization
+        ! 2: characteristic radius
+        ! 3: viscosity index, i.e. p in nu \propto r**p
+
+        y = pars(1)*(x/pars(2))**-pars(3)*exp(-(x/pars(2))**(2 - pars(3)))
+
+    end subroutine lbp_profile
 
     doubleprecision function lnp_pwr(params, x, y, nx)
         implicit none
@@ -176,5 +203,34 @@ contains
         end if
 
     end function lnp_pwr2_logit
+
+    doubleprecision function lnp_lbp(params, x, y, nx)
+        implicit none
+        integer, intent(IN) :: nx
+        doubleprecision, intent(IN) :: params(3)
+        doubleprecision, intent(IN) :: x(nx), y(nx)
+        doubleprecision :: ym(nx)
+        ! this function has 3 parameters:
+        ! 1: normalization
+        ! 2: characteristic radius
+        ! 3: viscosity exponent
+
+        if ( &
+            (params(1) < 0) &
+            .or. (params(2) <= 0) &
+            .or. (params(3) < -10) &
+            .or. (params(3) > 10) &
+            ) then
+            lnp_lbp = inf_neg()
+        else
+            call lbp_profile(params, x, ym, nx)
+
+            lnp_lbp = sum(-(MIN(1d100, ym - y)**2/(2d0*(MAX(crop, 0.1d0*y))**2)))
+            if (lnp_lbp .ne. lnp_lbp) then
+                lnp_lbp = inf_neg()
+            end if
+        end if
+
+    end function lnp_lbp
 
 end module fmodule
