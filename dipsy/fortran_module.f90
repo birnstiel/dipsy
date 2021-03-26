@@ -54,6 +54,8 @@ contains
         doubleprecision, intent(IN) :: x(nx)
         doubleprecision, intent(OUT):: y(nx)
         doubleprecision :: r0
+        doubleprecision :: n = 0.1
+
         ! this function has 7 parameters:
         ! 1: normalization
         ! 2: brightness drop at dust line
@@ -71,9 +73,9 @@ contains
         ! the left (=1) and the right (=1-pars(2)) limit of the logit function.
 
         if (pars(2) > 1e-8) then
-            r0 = pars(7)/(1d0 + 0.1d0*log(pars(2)/((1d0 - pars(2))**0.9d0 + pars(2) - 1d0) - 1d0))
+            r0 = pars(7)/(1d0 + 0.1d0*log(pars(2)/((1d0 - pars(2))**n + pars(2) - 1d0) - 1d0))
         else
-            r0 = pars(7)/(1d0 + 0.1d0*log(9d0))
+            r0 = pars(7)/(1d0 + 0.1d0*log(n/(1d0 - n)))
         end if
 
         y = 1 - pars(2)/(1d0 + exp(-(x - r0)/(0.1*r0)))
