@@ -10,6 +10,8 @@ Utility functions that do not fit anywhere else:
 import numbers
 import sys
 from io import StringIO
+import importlib.util
+from pathlib import Path
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -228,8 +230,9 @@ def hdf5_add_dict(f, i, result):
     ----------
     f : open, writable h5py file object
         file into which to store the data
-    i : int
+    i : int | str
         index -- will be used to create a length-7, zero padded string of that number as index
+        if it is already such a sting, it will just use it
     result : dict | namedtuple
         data to store in the hdf5 file
 
@@ -239,8 +242,12 @@ def hdf5_add_dict(f, i, result):
         if dataset is not a dict or namedtuple (or can be converted to a dict with its `_asdict` method)
     """
     # create a group for each simulation
+    if type(i) is str:
+        key = i
+    else:
+        key = f'{i:07d}'
 
-    group = f.create_group(f'{i:07d}')
+    group = f.create_group(key)
 
     # this should work for namedtuples and dicts
 
@@ -309,6 +316,12 @@ def is_interactive():
 class Capturing(list):
     """Context manager capturing standard output of whatever is called in it.
 
+    Keywords
+    --------
+    stderr : bool
+        if True will capture the standard error instead of standard output.
+        defaulats to False
+
     Examples
     --------
     >>> with Capturing() as output:
@@ -319,29 +332,59 @@ class Capturing(list):
     This can also be concatenated
 
     >>> with Capturing() as output:
-    >>>    print 'hello world'
-    >>>
+    >>>    print('hello world')
     >>> print('displays on screen')
-    >>>
-    >>> with Capturing(output) as output:
+    displays on screen
+
+    >>> with output:
     >>>     print('hello world2')
-    >>>
-    >>> print('done')
     >>> print('output:', output)
-    done
     output: ['hello world', 'hello world2']
 
-    Copied from [this stackoverflow answer](http://stackoverflow.com/a/16571630/2108771)
+    >>> import warnings
+    >>> with output, Capturing(stderr=True) as err:
+    >>>     print('hello world2')
+    >>>     warnings.warn('testwarning')
+    >>> print(output)
+    output: ['hello world', 'hello world2']
+
+    >>> print('error:', err[0].split(':')[-1])
+    error:  testwarning
+
+    Mostly copied from [this stackoverflow answer](http://stackoverflow.com/a/16571630/2108771)
 
     """
 
+    def __init__(self, /, *args, stderr=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._error = stderr
+
     def __enter__(self):
         """Start capturing output when entering the context"""
-        self._stdout = sys.stdout
-        sys.stdout = self._stringio = StringIO()
+        if self._error:
+            self._std = sys.stderr
+            sys.stderr = self._stringio = StringIO()
+        else:
+            self._std = sys.stdout
+            sys.stdout = self._stringio = StringIO()
         return self
 
     def __exit__(self, *args):
         """Get & return the collected output when exiting context"""
         self.extend(self._stringio.getvalue().splitlines())
-        sys.stdout = self._stdout
+        if self._error:
+            sys.stderr = self._std
+        else:
+            sys.stdout = self._std
+
+
+def remote_import(filename):
+    "imports remote python file `filename`"
+    filename = Path(filename)
+    module_name = filename.stem
+    file_path = str(filename.absolute())
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module

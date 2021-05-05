@@ -53,6 +53,12 @@ if __name__ == "__main__":
                 'astropy',
                 'astroquery'],
             python_requires='>=3.6',
+            entry_points={
+                'console_scripts': [
+                    'run_grid=dipsy.grid.run_grid:main',
+                    'analyze_grid=dipsy.grid.analyze_grid:main',
+                ],
+            }
         )
 
     try:

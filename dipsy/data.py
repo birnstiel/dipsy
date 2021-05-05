@@ -184,7 +184,7 @@ class Tripathi2017(object):
         y = 2.13 + 0.51 * x
 
         # add the following lines to fill in between one sigma
-        ax.plot(y, x, c='0.', ls='--', label='$\mathrm{R_{eff} \propto \sqrt{L_{mm}}}$')
+        ax.plot(y, x, c='0.', ls='--', label=r'$\mathrm{R_{eff} \propto \sqrt{L_{mm}}}$')
         if sigma:
             # add the standard deviation
             ax.plot(y + 0.19, x, c='0.75', ls='--')
@@ -347,9 +347,81 @@ class tychoniec_dataset(mm_survey_dataset):
         self.calculate_KaplanMaier()
 
 
-ansdell17 = mm_survey_dataset(name='Ansdell17',   paper='Ansdell et al. 2017',   catalog='J/AJ/153/240/sources',     columns=['F1.33', 'e_F1.33'],         unit=u.mJy, d=385*u.pc, lam=1.33*u.mm)  # noqa
-ansdell16 = mm_survey_dataset(name='Ansdell16',   paper='Ansdell et al. 2016',   catalog='J/ApJ/828/46/alma',        columns=['F890', 'e_F890'],           unit=u.mJy, d=150*u.pc, lam=1.33*u.mm)  # noqa
-barenfeld16 = mm_survey_dataset(name='Barenfeld16', paper='Barenfeld et al. 2016', catalog='J/ApJ/827/142/stars',      columns=['Snu', 'e_Snu'],             unit=u.mJy, d=145*u.pc, lam=880*u.um)  # noqa
-pascucci16 = mm_survey_dataset(name='Pascucci16',  paper='Pascucci et al. 2016',  catalog='J/ApJ/831/125/sources',    columns=['Fnu', 'e_Fnu'],             unit=u.mJy, d=160*u.pc, lam=887*u.um)  # noqa
-andrews13 = mm_survey_dataset(name='Andrews13',   paper='Andrews et al. 2013',   catalog='J/ApJ/771/129/table2',     columns=['F1.3', 'e_F1.3', 'l_F1.3'], unit=u.Jy,  d=140*u.pc, lam=1.3*u.mm)  # noqa
-# tychoniec18 = tychoniec_dataset(name='Tychoniec18', paper='Tychoniec et al. 2018', catalog='J/ApJS/238/19/protostars', columns=['Fc9', None, 'l_Fc9'],       unit=u.mJy, d=293*u.pc, lam=9*u.mm)  # noqa
+class ansdell17(mm_survey_dataset):
+    def __init__(self, **kwargs):
+        super().__init__(
+            name='Ansdell17',
+            paper='Ansdell et al. 2017',
+            catalog='J/AJ/153/240/sources',
+            columns=['F1.33', 'e_F1.33'],
+            unit=u.mJy,
+            d=385 * u.pc,
+            lam=1.33 * u.mm)
+
+
+class ansdell16(mm_survey_dataset):
+    def __init__(self):
+        super().__init__(
+            name='Ansdell16',
+            paper='Ansdell et al. 2016',
+            catalog='J/ApJ/828/46/alma',
+            columns=['F890', 'e_F890'],
+            unit=u.mJy,
+            d=150 * u.pc,
+            lam=1.33 * u.mm)
+
+
+class barenfeld16(mm_survey_dataset):
+    def __init__(self):
+        super().__init__(
+            name='Barenfeld16',
+            paper='Barenfeld et al. 2016',
+            catalog='J/ApJ/827/142/stars',
+            columns=['Snu', 'e_Snu'],
+            unit=u.mJy,
+            d=145 * u.pc,
+            lam=880 * u.um)
+
+
+class pascucci16(mm_survey_dataset):
+    def __init__(self):
+        super().__init__(
+            name='Pascucci16',
+            paper='Pascucci et al. 2016',
+            catalog='J/ApJ/831/125/sources',
+            columns=['Fnu', 'e_Fnu'],
+            unit=u.mJy,
+            d=160 * u.pc,
+            lam=887 * u.um)
+
+
+class andrews13(mm_survey_dataset):
+    def __init__(self):
+        super().__init__(
+            name='Andrews13',
+            paper='Andrews et al. 2013',
+            catalog='J/ApJ/771/129/table2',
+            columns=['F1.3', 'e_F1.3', 'l_F1.3'],
+            unit=u.Jy,
+            d=140 * u.pc,
+            lam=1.3 * u.mm)
+
+
+class tychoniec18(tychoniec_dataset):
+    def __init__(self):
+        super().__init__(
+            name='Tychoniec18',
+            paper='Tychoniec et al. 2018',
+            catalog='J/ApJS/238/19/protostars',
+            columns=['Fc9', None, 'l_Fc9'],
+            unit=u.mJy,
+            d=293 * u.pc,
+            lam=9 * u.mm)
+
+
+# ansdell17 = mm_survey_dataset(name='Ansdell17',   paper='Ansdell et al. 2017',   catalog='J/AJ/153/240/sources',     columns=['F1.33', 'e_F1.33'],         unit=u.mJy, d=385*u.pc, lam=1.33*u.mm)
+# ansdell16 = mm_survey_dataset(name='Ansdell16',   paper='Ansdell et al. 2016',   catalog='J/ApJ/828/46/alma',        columns=['F890', 'e_F890'],           unit=u.mJy, d=150*u.pc, lam=1.33*u.mm)
+# barenfeld16 = mm_survey_dataset(name='Barenfeld16', paper='Barenfeld et al. 2016', catalog='J/ApJ/827/142/stars',      columns=['Snu', 'e_Snu'],             unit=u.mJy, d=145*u.pc, lam=880*u.um)
+# pascucci16 = mm_survey_dataset(name='Pascucci16',  paper='Pascucci et al. 2016',  catalog='J/ApJ/831/125/sources',    columns=['Fnu', 'e_Fnu'],             unit=u.mJy, d=160*u.pc, lam=887*u.um)
+# andrews13 = mm_survey_dataset(name='Andrews13',   paper='Andrews et al. 2013',   catalog='J/ApJ/771/129/table2',     columns=['F1.3', 'e_F1.3', 'l_F1.3'], unit=u.Jy,  d=140*u.pc, lam=1.3*u.mm)
+# tychoniec18 = tychoniec_dataset(name='Tychoniec18', paper='Tychoniec et al. 2018', catalog='J/ApJS/238/19/protostars', columns=['Fc9', None, 'l_Fc9'],       unit=u.mJy, d=293*u.pc, lam=9*u.mm)
