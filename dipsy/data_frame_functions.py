@@ -27,12 +27,31 @@ def make_interfaces(param_values):
     return param_interfaces
 
 
-def histogram_corner(d, param_values, param_interfaces=None, param_label=None, f=None, vmax=1000.):
-    """
-    Produce a "corner plot" where all the parameter combinations
+def histogram_corner(d, param_values, param_interfaces=None, param_label=None, f=None, vmax=1000., **kwargs):
+    """Produce a "corner plot" where all the parameter combinations
     are shown as 2D histograms.
 
-    param_
+    Parameters
+    ----------
+    d : pandas.DataFrame
+        the data you want to plot
+    param_values : dict
+        the values each parameter can take
+    param_interfaces : dict, optional
+        the interfaces between the parameters, by default None
+    param_label : dict, optional
+        the labels how every parameter is displayed with latex, by default None
+    f : figure, optional
+        into which figure to plot, by default None
+    vmax : int, optional
+        upper end of the color scale, by default 1000.
+
+    kwargs are passed to imshow
+
+    Returns
+    -------
+    figure
+        the figure object
     """
 
     param_names = list(param_values.keys())
@@ -62,7 +81,7 @@ def histogram_corner(d, param_values, param_interfaces=None, param_label=None, f
             # plot the histograms
 
             H = np.histogram2d(x, y, bins=[param_interfaces[x_name], param_interfaces[y_name]])
-            m = ax.imshow(H[0].T, vmin=0, vmax=vmax, origin='lower')
+            m = ax.imshow(H[0].T, vmin=0, vmax=vmax, origin='lower', **kwargs)
 
             # SET X-LABELS
 
