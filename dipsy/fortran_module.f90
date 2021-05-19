@@ -66,11 +66,12 @@ contains
         ! 7: position of dust line
 
         ! logistic taper by factor pars(2) at position r0 with
-        ! a width of 0.1 * r0
+        ! a width of 0.1 * r0 (this 0.1 is the value in front of the log below)
         ! r0 is the center of the logit function, but we want
-        ! the parameter pars(7) to be the "outer end" of that logit
-        ! transition, so we define this at being 90% in log space between
+        ! the parameter pars(7) to be the "inner end" of that logit
+        ! transition, so we define this at being 10% in log space between
         ! the left (=1) and the right (=1-pars(2)) limit of the logit function.
+        ! this 10% parameter is the variable n hardcoded above.
 
         if (pars(2) > 1e-8) then
             r0 = pars(7)/(1d0 + 0.1d0*log(pars(2)/((1d0 - pars(2))**n + pars(2) - 1d0) - 1d0))
