@@ -355,7 +355,7 @@ class Capturing(list):
 
     """
 
-    def __init__(self, /, *args, stderr=False, **kwargs):
+    def __init__(self, *args, stderr=False, **kwargs):
         super().__init__(*args, **kwargs)
         self._error = stderr
 
