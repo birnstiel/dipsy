@@ -299,15 +299,9 @@ class mm_survey_dataset():
             kmf = KaplanMeierFitter()
             kmf.fit_left_censoring(values, limits)
 
-            x_values = kmf.cumulative_density_.index.values
-            cdfm1 = 1. - kmf.cumulative_density_.values
-            minmax = 1. - kmf.confidence_interval_.values
-            minmax[-1] = np.array([0., 0.])
-
-            self.km_x = x_values
-            self.km_y_low = minmax[:, 0]
-            self.km_y_high = minmax[:, 1]
-            self.km_y = cdfm1[:, 0]
+            self.km_x = kmf.cumulative_density_.index.values
+            self.km_y = kmf.survival_function_.to_numpy().flatten()
+            self.km_y_low, self.km_y_high = kmf.confidence_interval_.values.T
 
 
 class tychoniec_dataset(mm_survey_dataset):
