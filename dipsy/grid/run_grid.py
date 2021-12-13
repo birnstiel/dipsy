@@ -41,8 +41,10 @@ def main():
     grid = dipsy.utils.remote_import(grid_file)
 
     # %% ----------- get the grid parameters --------------
-
-    param = grid.param
+    if hasattr(grid, 'param'):
+        param = grid.param
+    else:
+        param = None
     filename = grid.filename
     parallel_run = grid.parallel_run
     cores = grid.cores
@@ -52,9 +54,14 @@ def main():
 
     # %% -------------- set up parameter list & grids ---------------
 
-    # make a list of all possible combinations
-
-    param_val = list(itertools.product(*param))
+    if param is None:
+        if hasattr(grid, 'param_val'):
+            param_val = grid.param_val
+        else:
+            raise ValueError('grid file needs to set either `param` (=grid parameters) or `param_val` (random values)')
+    else:
+        # GRID: make a list of all possible combinations
+        param_val = list(itertools.product(*param))
 
     if ARGS.test is not None:
         print(f'TESTING: only running simulation #{ARGS.test}')
