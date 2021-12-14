@@ -80,11 +80,18 @@ def get_powerlaw_dust_distribution(sigma_d, a_max, q=3.5, na=10, a0=None, a1=Non
 
             # filling all bins that are strictly below a_max
 
-            for ia in range(i_up):
-                sig_da[ir, ia] = a_i[ia + 1]**(4 - q) - a_i[ia]**(4 - q)
+            if q == 4.0:
+                for ia in range(i_up):
+                    sig_da[ir, ia] = np.log(a_i[ia + 1] / a_i[ia])
 
-            # filling the bin that contains a_max
-            sig_da[ir, i_up] = a_max[ir]**(4 - q) - a_i[i_up]**(4 - q)
+                # filling the bin that contains a_max
+                sig_da[ir, i_up] = np.log(a_max[ir] / a_i[i_up])
+            else:
+                for ia in range(i_up):
+                    sig_da[ir, ia] = a_i[ia + 1]**(4 - q) - a_i[ia]**(4 - q)
+
+                # filling the bin that contains a_max
+                sig_da[ir, i_up] = a_max[ir]**(4 - q) - a_i[i_up]**(4 - q)
 
         # normalize
 
@@ -660,7 +667,7 @@ def I_over_B(tau_total, eps_e, mu=1, ntau=300):
 def I_over_B_EB(tau, eps_e, mu=1):
     """"same as I_over_B but using the Eddington-Barbier approximation.
 
-    This solves Eq. 19 of Birnstiel et al. 2018, but see also notes 
+    This solves Eq. 19 of Birnstiel et al. 2018, but see also notes
     in `J_over_B`.
 
     Parameters
