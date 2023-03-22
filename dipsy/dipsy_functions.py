@@ -191,7 +191,7 @@ class Opacity(object):
             asymmetry parameter, array of shape (len(a), len(lam))
         """
         if self._g is None:
-            return np.zeros([len(np.array(lam, ndmin=1)), len(np.array(a, ndmin=1))]).squeeze()
+            return np.zeros([len(np.array(a, ndmin=1)), len(np.array(lam, ndmin=1))]).squeeze()
         else:
             return self._interp_g(np.log10(lam), np.log10(a))
 
@@ -307,6 +307,7 @@ def get_observables(r, sig_g, sig_d, a_max, T, opacity, lam, distance=140 * pc, 
         # Calculate intensity profile
         # 1. optical depth
         tau[ilam, :] = (sig_da * k_ext[ilam, :].T).sum(-1)
+        tau = np.minimum(100., tau)
 
         if scattering:
             # 2. a size averaged opacity and from that the averaged epsilon

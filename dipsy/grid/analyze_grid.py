@@ -80,7 +80,8 @@ def main():
                 failed_keys += [keys[i]]
             else:
                 dipsy.utils.hdf5_add_dict(f, keys[i], res)
-                del res
+
+            del res
             print(f'\rRunning ... {(i+1) / n_sim:.1%}', end='', flush=True)
 
     print('\r--------- DONE ---------')
