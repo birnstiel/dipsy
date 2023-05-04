@@ -195,6 +195,34 @@ class Opacity(object):
         else:
             return self._interp_g(np.log10(lam), np.log10(a))
 
+    def get_k_ext_eff(self, a, lam):
+        """
+        Returns the effective extinction opacity for the given particle
+        size `a` and wavelength `lam`.
+
+            k_ext_eff = k_abs + (1.0 - g) * k_sca
+
+        Arguments:
+        ----------
+
+        a : float | array
+            particle size in cm
+
+        lam : float | array
+            wavelength in cm
+
+        Returns:
+        --------
+        k_ext_eff : arrays
+            effective extinction opacity, array of shape (len(a), len(lam))
+        """
+        k_a, k_s = self.get_opacities(a, lam)
+        g = self.get_g(a, lam)
+
+        k_se = (1.0 - g) * k_s
+        k_ext_eff = k_a + k_se
+        return k_ext_eff
+
 
 def get_observables(r, sig_g, sig_d, a_max, T, opacity, lam, distance=140 * pc, flux_fraction=0.68, a=None, q=3.5, na=50, a0=None, a1=None, scattering=True):
     """
