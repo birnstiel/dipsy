@@ -5,7 +5,7 @@ import os
 import h5py
 
 import numpy as np
-from scipy.interpolate import interp2d
+from scipy.interpolate import RegularGridInterpolator
 from collections import namedtuple
 
 from .cgs_constants import year, jy_sas, c_light, pc
@@ -108,13 +108,32 @@ class Opacity(object):
     _k_sca = None
     _g = None
     _rho_s = None
+    _extrapol = False
 
     @property
     def rho_s(self):
         "material density in g/cm^3"
         return self._rho_s
 
-    def __init__(self, input=None):
+    def __init__(self, input=None, **kwargs):
+        """Object to read and interpolate opacities.
+
+        input : str | path
+            the name of the opacity file to be read. If it doesn't
+            exist at the given position, it will try to get it from
+            dshapr
+
+        kwargs : keyword dict
+            they are passed to the interpolation. This way 
+            it is possible to change the interpolation method 
+            and allow extrapolation (in log-log space for the
+            opacities, in log-linear space for g), e.g. by passing
+            `fill_value=None, bounds_error=False`. This is strongly
+            discouraged, as for grain sizes close to the wavlength,
+            strong oscillations can occur and the extrapolation 
+            is then off by many orders of magnitude. Do this only
+            if you know what you are doing.
+        """
 
         # set default opacities
 
@@ -134,10 +153,10 @@ class Opacity(object):
         elif type(input) is dict:
             self._load_from_dict_like(dict)
 
-        self._interp_k_abs = interp2d(np.log10(self._lam), np.log10(self._a), np.log10(self._k_abs))
-        self._interp_k_sca = interp2d(np.log10(self._lam), np.log10(self._a), np.log10(self._k_sca))
+        self._interp_k_abs = RegularGridInterpolator((np.log10(self._lam), np.log10(self._a)), np.log10(self._k_abs).T, **kwargs)
+        self._interp_k_sca = RegularGridInterpolator((np.log10(self._lam), np.log10(self._a)), np.log10(self._k_sca).T, **kwargs)
         if self._g is not None:
-            self._interp_g = interp2d(np.log10(self._lam), np.log10(self._a), self._g)
+            self._interp_g = RegularGridInterpolator((np.log10(self._lam), np.log10(self._a)), self._g.T, **kwargs)
 
     def _load_from_dict_like(self, input):
         for attr in ['a', 'lam', 'k_abs', 'k_sca', 'g', 'rho_s']:
@@ -168,8 +187,8 @@ class Opacity(object):
             absorption and scattering opacities, each of shape (len(a), len(lam))
         """
         return \
-            10.**self._interp_k_abs(np.log10(lam), np.log10(a)), \
-            10.**self._interp_k_sca(np.log10(lam), np.log10(a)),
+            10.**self._interp_k_abs(tuple(np.meshgrid(np.log10(lam), np.log10(a)))), \
+            10.**self._interp_k_sca(tuple(np.meshgrid(np.log10(lam), np.log10(a)))),
 
     def get_g(self, a, lam):
         """
@@ -193,7 +212,7 @@ class Opacity(object):
         if self._g is None:
             return np.zeros([len(np.array(a, ndmin=1)), len(np.array(lam, ndmin=1))]).squeeze()
         else:
-            return self._interp_g(np.log10(lam), np.log10(a))
+            return self._interp_g(tuple(np.meshgrid(np.log10(lam), np.log10(a))))
 
     def get_k_ext_eff(self, a, lam):
         """
