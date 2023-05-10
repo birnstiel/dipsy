@@ -125,15 +125,13 @@ class Opacity(object):
 
         kwargs : keyword dict
             they are passed to the interpolation. This way 
-            it is possible to change the interpolation method 
-            and allow extrapolation (in log-log space for the
-            opacities, in log-linear space for g), e.g. by passing
-            `fill_value=None, bounds_error=False`. This is strongly
-            discouraged, as for grain sizes close to the wavlength,
-            strong oscillations can occur and the extrapolation 
-            is then off by many orders of magnitude. Do this only
-            if you know what you are doing.
+            it is possible to turn off or change the interpolation method 
+            (in log-log space for the opacities, in log-linear space
+            for g), e.g. by passing keywords like `bounds_error=True`.
         """
+
+        kwargs['fill_value'] = kwargs.get('fill_value', None)
+        kwargs['bounds_error'] = kwargs.get('bounds_error', False)
 
         # set default opacities
 
@@ -167,6 +165,30 @@ class Opacity(object):
         if self._rho_s is not None:
             self._rho_s = float(self._rho_s)
 
+    def _check_input(self, a, lam):
+        """Checks if the input is asking for extrapolation in a reasonable range
+
+        Parameters
+        ----------
+        a : float | array
+            particle size in cm
+
+        lam : float | array
+            wavelength in cm
+        """
+        # either we are in the grid of known opacities
+        # OR we are at large enough optical sizes to be
+        # properly extrapolating
+        mask = \
+            (
+                ((a <= self._a[-1]) & (a >= self._a[0]))[:, None] &
+                ((lam <= self._lam[-1]) & (lam >= self._lam[0]))[None, :]
+            ) | (
+                a[:, None] > 100 * lam[None, :] / (2 * np.pi)
+            )
+        if not np.all(mask):
+            raise ValueError('extrapolating too close to the interference part of the opacities')
+
     def get_opacities(self, a, lam):
         """
         Returns the absorption and scattering opacities for the given particle
@@ -186,6 +208,7 @@ class Opacity(object):
         k_abs, k_sca : arrays
             absorption and scattering opacities, each of shape (len(a), len(lam))
         """
+        self._check_input(a, lam)
         return \
             10.**self._interp_k_abs(tuple(np.meshgrid(np.log10(lam), np.log10(a)))), \
             10.**self._interp_k_sca(tuple(np.meshgrid(np.log10(lam), np.log10(a)))),
@@ -212,6 +235,7 @@ class Opacity(object):
         if self._g is None:
             return np.zeros([len(np.array(a, ndmin=1)), len(np.array(lam, ndmin=1))]).squeeze()
         else:
+            self._check_input(a, lam)
             return self._interp_g(tuple(np.meshgrid(np.log10(lam), np.log10(a))))
 
     def get_k_ext_eff(self, a, lam):
