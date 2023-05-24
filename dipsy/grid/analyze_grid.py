@@ -9,7 +9,9 @@ from multiprocessing import Pool
 import time as walltime
 from pathlib import Path
 from functools import partial
-
+import pyarrow
+import pandas as pd
+import pyarrow.parquet as pq
 import h5py
 import dipsy
 
@@ -73,16 +75,31 @@ def main():
     n_sim = len(indices)
     keys = [keys[i] for i in indices]
     failed_keys = []
+    writer = None
 
-    with h5py.File(Path(fname_out).with_suffix('.hdf5'), 'w') as f:
+    try:
         for i, res in enumerate(pool.imap(partial(analysis.parallel_analyze, settings=settings), keys)):
+
             if res is False:
                 failed_keys += [keys[i]]
-            else:
-                dipsy.utils.hdf5_add_dict(f, keys[i], res)
+                del res
+                continue
 
+            # if simulation worked: store in parquet file
+            res['key'] = f'{keys[i]:07d}'
+            table = pyarrow.Table.from_pandas(pd.DataFrame([res]))
+            if writer is None:
+                writer = pq.ParquetWriter(Path(fname_out).with_suffix('.parquet'), table.schema)
+
+            writer.write_table(table)
             del res
+            del table
             print(f'\rRunning ... {(i+1) / n_sim:.1%}', end='', flush=True)
+    except Exception as e:
+        print(e)
+    finally:
+        if writer is not None:
+            writer.close()
 
     print('\r--------- DONE ---------')
 

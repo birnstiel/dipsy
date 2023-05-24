@@ -51,7 +51,8 @@ if __name__ == "__main__":
                 'numpy',
                 'matplotlib',
                 'astropy',
-                'astroquery'],
+                'astroquery',
+                'pyarrow'],
             python_requires='>=3.6',
             entry_points={
                 'console_scripts': [
