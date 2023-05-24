@@ -86,7 +86,7 @@ def main():
                 continue
 
             # if simulation worked: store in parquet file
-            res['key'] = f'{keys[i]:07d}'
+            res['key'] = keys[i]
             table = pyarrow.Table.from_pandas(pd.DataFrame([res]))
             if writer is None:
                 writer = pq.ParquetWriter(Path(fname_out).with_suffix('.parquet'), table.schema)
