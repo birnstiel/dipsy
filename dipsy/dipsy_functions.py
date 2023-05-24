@@ -124,8 +124,8 @@ class Opacity(object):
             dshapr
 
         kwargs : keyword dict
-            they are passed to the interpolation. This way 
-            it is possible to turn off or change the interpolation method 
+            they are passed to the interpolation. This way
+            it is possible to turn off or change the interpolation method
             (in log-log space for the opacities, in log-linear space
             for g), e.g. by passing keywords like `bounds_error=True`.
         """
@@ -267,7 +267,9 @@ class Opacity(object):
         return k_ext_eff
 
 
-def get_observables(r, sig_g, sig_d, a_max, T, opacity, lam, distance=140 * pc, flux_fraction=0.68, a=None, q=3.5, na=50, a0=None, a1=None, scattering=True):
+def get_observables(r, sig_g, sig_d, a_max, T, opacity, lam, distance=140 * pc,
+                    flux_fraction=0.68, a=None, q=3.5, na=50, a0=None, a1=None, scattering=True,
+                    inc=0.0):
     """
     Calculates the radial profiles of the (vertical) optical depth and the intensity for a given simulation
     at a given time (using the closest simulation snapshot).
@@ -325,6 +327,10 @@ def get_observables(r, sig_g, sig_d, a_max, T, opacity, lam, distance=140 * pc, 
     scattering : bool
         if True, use the scattering solution, else just absorption
 
+    inc : float
+        inclination, default is 0.0 = face-on. This is just treated as
+        increasing the path length across the slab model.
+
     Output:
     -------
 
@@ -377,7 +383,7 @@ def get_observables(r, sig_g, sig_d, a_max, T, opacity, lam, distance=140 * pc, 
 
         # Calculate intensity profile
         # 1. optical depth
-        tau[ilam, :] = (sig_da * k_ext[ilam, :].T).sum(-1)
+        tau[ilam, :] = (sig_da * k_ext[ilam, :].T).sum(-1) / np.cos(inc)
         tau = np.minimum(100., tau)
 
         if scattering:
@@ -407,7 +413,7 @@ def get_observables(r, sig_g, sig_d, a_max, T, opacity, lam, distance=140 * pc, 
     return observables(rf, flux_t, tau, I_nu, a, sig_da)
 
 
-def get_all_observables(d, opac, lam, amax=True, q=3.5, flux_fraction=0.68, scattering=True):
+def get_all_observables(d, opac, lam, amax=True, q=3.5, flux_fraction=0.68, scattering=True, inc=0.0):
     """Calculate the radius and total flux for all snapshots of a simulation
 
     Arguments:
@@ -435,6 +441,10 @@ def get_all_observables(d, opac, lam, amax=True, q=3.5, flux_fraction=0.68, scat
     scattering : bool
         whether or not to include scattering
 
+    inc : float
+        inclination, default is 0.0 = face-on. This is just treated as
+        increasing the path length across the slab model.
+
     Returns:
     --------
     rf : array
@@ -459,7 +469,7 @@ def get_all_observables(d, opac, lam, amax=True, q=3.5, flux_fraction=0.68, scat
 
     for it in range(len(d.time)):
         obs = get_observables(d.r, d.sig_g[it, :], sig_d[it], d.a_max[it, :], d.T[it, :], opac, lam,
-                              q=q, a=_a, flux_fraction=flux_fraction, scattering=scattering)
+                              q=q, a=_a, flux_fraction=flux_fraction, scattering=scattering, inc=inc)
         rf += [obs.rf]
         flux += [obs.flux_t]
         tau += [obs.tau]
