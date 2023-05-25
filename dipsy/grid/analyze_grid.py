@@ -76,6 +76,7 @@ def main():
     keys = [keys[i] for i in indices]
     failed_keys = []
     writer = None
+    fname = Path(fname_out).with_suffix('.parquet')
 
     try:
         for i, res in enumerate(pool.imap(partial(analysis.parallel_analyze, settings=settings), keys)):
@@ -89,7 +90,7 @@ def main():
             res['key'] = keys[i]
             table = pyarrow.Table.from_pandas(pd.DataFrame([res]))
             if writer is None:
-                writer = pq.ParquetWriter(Path(fname_out).with_suffix('.parquet'), table.schema)
+                writer = pq.ParquetWriter(fname, table.schema)
 
             writer.write_table(table)
             del res
@@ -100,6 +101,9 @@ def main():
     finally:
         if writer is not None:
             writer.close()
+            # we re-read and write it as this further compresses the file
+            df = pd.read_parquet(fname, engine='pyarrow')
+            df.to_parquet(fname, engine='pyarrow')
 
     print('\r--------- DONE ---------')
 
