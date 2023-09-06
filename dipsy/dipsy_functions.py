@@ -566,53 +566,53 @@ def read_dustpy_data(data_path, time=None):
     - sig_g
     - time
     """
-    from dustpy.sim.utils import readFilesFromDir
-    from dustpy.sim.utils import getSequence
+    import dustpy
     from scipy.interpolate import interp2d
 
-    files = readFilesFromDir(data_path, 'data*.hdf5')
+    reader = dustpy.hdf5writer()
+    reader.datadir = str(data_path)
 
-    time_dp = getSequence("t", files)
+    time_dp = reader.read.sequence("t")
 
     # Read the radial and mass grid
-    r = getSequence("grid/r", files)[0]
-    # rInt = getSequence("grid/rInt", files)
-    # m = getSequence("grid/m", files)
+    r = reader.read.sequence("grid/r")[0]
+    # rInt = reader.read.sequence("grid/rInt")
+    # m = reader.read.sequence("grid/m")
 
     # Read the gas and dust densities
-    sig_g = getSequence("gas/Sigma", files)
-    sig_da = getSequence("dust/Sigma", files)
+    sig_g = reader.read.sequence("gas/Sigma")
+    sig_da = reader.read.sequence("dust/Sigma")
     sig_d = sig_da.sum(-1)
 
     # Read the stokes number and dust size
-    # St = getSequence("dust/St", files)
-    a = getSequence("dust/a", files)[0, 0, :]
+    # St = reader.read.sequence("dust/St")
+    a = reader.read.sequence("dust/a")[0, 0, :]
 
     # Read the star mass and radius
-    # M_star = getSequence("star/M", files)[0]
-    # R_star = getSequence("star/R", files)[0]
+    # M_star = reader.read.sequence("star/M", files]
+    # R_star = reader.read.sequence("star/R", files]
 
     # Obtain the dust to gas ratio
     # d2g = sig_d / sig_g
 
     # Read the Gas and Dust scale height
-    # Hg = getSequence("gas/Hp", files)
-    # Hd = getSequence("dust/h", files)
+    # Hg = reader.read.sequence("gas/Hp")
+    # Hd = reader.read.sequence("dust/h")
 
     # Read the gas (viscous) and dust velocities
-    # Vel_g = getSequence("gas/vVisc", files)
-    Vel_d = getSequence("dust/vRad", files)
+    # Vel_g = reader.read.sequence("gas/v/visc")
+    Vel_d = reader.read.sequence("dust/v/rad")
 
     # Read the alpha parameter and the orbital angular velocity
-    # Alpha  = getSequence("gas/alpha", files)
-    # OmegaK = getSequence("grid/OmegaK", files)
+    # Alpha  = reader.read.sequence("gas/alpha")
+    # OmegaK = reader.read.sequence("grid/OmegaK")
 
     # Read the gas midplane density, sound speed, and eta parameter
-    # rho = getSequence("gas/rho", files)
-    # cs = getSequence("gas/cs", files)
-    # eta = getSequence("gas/eta", files)
+    # rho = reader.read.sequence("gas/rho")
+    # cs = reader.read.sequence("gas/cs")
+    # eta = reader.read.sequence("gas/eta")
 
-    T = getSequence("gas/T", files)
+    T = reader.read.sequence("gas/T")
 
     # Obtain the Accretion Rate of dust and gas
     # Acc_g = 2 * np.pi * r * Vel_g * sig_g

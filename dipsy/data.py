@@ -15,7 +15,7 @@ from astroquery.vizier import Vizier
 try:
     from lifelines import KaplanMeierFitter
     lifelines_available = True
-except (ImportError, ValueError):
+except (ImportError, ValueError, AttributeError):
     lifelines_available = False
 
 from .dipsy_functions import bplanck
