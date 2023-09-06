@@ -1,7 +1,7 @@
 """
 Functions to calculate observables or read data from simulations
 """
-import os
+from pathlib import Path
 import h5py
 
 import numpy as np
@@ -138,18 +138,20 @@ class Opacity(object):
         if input is None:
             input = 'default_opacities_smooth.npz'
 
-        if type(input) is str and not os.path.isfile(input):
-            input = dsharp_opac.get_datafile(input)
-            if not os.path.isfile(input):
-                raise ValueError('unknown input')
+        if type(input) is dict:
+            self._load_from_dict_like(dict)
+        else:
+            if type(input) is str:
+                input = Path(input)
 
-        if type(input) is str and os.path.isfile(input):
-            self._filename = input
+            if not input.is_file():
+                input = Path(dsharp_opac.get_datafile(str(input)))
+                if not input.is_file():
+                    raise ValueError('unknown input')
+
+            self._filename = str(input)
             with np.load(input) as f:
                 self._load_from_dict_like(f)
-
-        elif type(input) is dict:
-            self._load_from_dict_like(dict)
 
         self._interp_k_abs = RegularGridInterpolator((np.log10(self._lam), np.log10(self._a)), np.log10(self._k_abs).T, **kwargs)
         self._interp_k_sca = RegularGridInterpolator((np.log10(self._lam), np.log10(self._a)), np.log10(self._k_sca).T, **kwargs)
