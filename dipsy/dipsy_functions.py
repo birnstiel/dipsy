@@ -34,8 +34,9 @@ def get_powerlaw_dust_distribution(sigma_d, a_max, q=3.5, na=10, a0=None, a1=Non
     Keywords:
     ---------
 
-    q : float
+    q : float | array
         particle size index, n(a) propto a**-q
+        if array, it has to have the same length as sigma_d
 
     na : int
         number of particle size bins
@@ -71,6 +72,9 @@ def get_powerlaw_dust_distribution(sigma_d, a_max, q=3.5, na=10, a0=None, a1=Non
     a_i = np.logspace(np.log10(a0), np.log10(a1), na + 1)
     a = 0.5 * (a_i[1:] + a_i[:-1])
 
+    # we want to turn q into an array if it isn't one already
+    q = q * np.ones(nr)
+
     for ir in range(nr):
 
         if a_max[ir] <= a0:
@@ -80,7 +84,7 @@ def get_powerlaw_dust_distribution(sigma_d, a_max, q=3.5, na=10, a0=None, a1=Non
 
             # filling all bins that are strictly below a_max
 
-            if q == 4.0:
+            if q[ir] == 4.0:
                 for ia in range(i_up):
                     sig_da[ir, ia] = np.log(a_i[ia + 1] / a_i[ia])
 
@@ -88,10 +92,10 @@ def get_powerlaw_dust_distribution(sigma_d, a_max, q=3.5, na=10, a0=None, a1=Non
                 sig_da[ir, i_up] = np.log(a_max[ir] / a_i[i_up])
             else:
                 for ia in range(i_up):
-                    sig_da[ir, ia] = a_i[ia + 1]**(4 - q) - a_i[ia]**(4 - q)
+                    sig_da[ir, ia] = a_i[ia + 1]**(4 - q[ir]) - a_i[ia]**(4 - q[ir])
 
                 # filling the bin that contains a_max
-                sig_da[ir, i_up] = a_max[ir]**(4 - q) - a_i[i_up]**(4 - q)
+                sig_da[ir, i_up] = a_max[ir]**(4 - q[ir]) - a_i[i_up]**(4 - q[ir])
 
         # normalize
 
@@ -314,8 +318,9 @@ def get_observables(r, sig_g, sig_d, a_max, T, opacity, lam, distance=140 * pc,
         if size distribution information is known (= sig_d is 2D), pass the
         particle size array here
 
-    q : float
+    q : float | array
         size exponent to use: n(a) ~ a^-q, so 3.5=MRN
+        if array, it has to have the same length as sig_d
 
     na : int
         length of the particle size grid
@@ -434,8 +439,10 @@ def get_all_observables(d, opac, lam, amax=True, q=3.5, flux_fraction=0.68, scat
         if True, will always use a power-law distribution, even if size distribution
         is available.
 
-    q : float
-        size distribution exponent
+    q : float | list of two elements
+        size distribution exponent, either a single float to be used everywhere
+        or a two-element list to specify q_f and q_d to be used in the fragmentation
+        and drift limited regimes, respectively.
 
     flux_fraction : float
         at which fraction of the total flux the effective radius is defined [-]
@@ -462,6 +469,8 @@ def get_all_observables(d, opac, lam, amax=True, q=3.5, flux_fraction=0.68, scat
     a = []
     sig_da = []
 
+    q_f, q_d = q * np.ones(2)
+
     if amax is False and hasattr(d, 'sig_da'):
         _a = d.a
         sig_d = d.sig_da
@@ -470,8 +479,12 @@ def get_all_observables(d, opac, lam, amax=True, q=3.5, flux_fraction=0.68, scat
         sig_d = d.sig_d
 
     for it in range(len(d.time)):
+
+        # assign the correct q
+
+        q_array = np.where(d.a_max[it, :] > np.minimum(d.a_fr[it, :], d.a_df[it, :]), q_f, q_d)
         obs = get_observables(d.r, d.sig_g[it, :], sig_d[it], d.a_max[it, :], d.T[it, :], opac, lam,
-                              q=q, a=_a, flux_fraction=flux_fraction, scattering=scattering, inc=inc)
+                              q=q_array, a=_a, flux_fraction=flux_fraction, scattering=scattering, inc=inc)
         rf += [obs.rf]
         flux += [obs.flux_t]
         tau += [obs.tau]
