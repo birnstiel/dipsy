@@ -402,7 +402,10 @@ def get_observables(r, sig_g, sig_d, a_max, T, opacity, lam, distance=140 * pc,
             # 3. plug those into the solution
             I_nu[ilam, :] = bplanck(freq, T) * I_over_B_EB(tau[ilam, :], eps_avg)
         else:
-            I_nu[ilam, :] = bplanck(freq, T) * (1.0 - np.exp(-tau[ilam, :]))
+            dummy = np.where(tau[ilam, :] > 1e-15,
+                             (1.0 - np.exp(-tau[ilam, :])),
+                             tau[ilam, :])
+            I_nu[ilam, :] = bplanck(freq, T) * dummy
 
     # calculate the fluxes
 
@@ -782,4 +785,7 @@ def I_over_B_EB(tau, eps_e, mu=1):
         outgoing intensity in units of the planck function.
     """
     arg = np.where(tau > 2. / 3. * mu, tau - 2. / 3. * mu, tau)
-    return (1.0 - np.exp(-tau / mu)) * S_over_B(arg, eps_e, tau)
+    dummy = np.where(tau / mu > 1e-15,
+                     1.0 - np.exp(-tau / mu),
+                     tau / mu)
+    return dummy * S_over_B(arg, eps_e, tau)
