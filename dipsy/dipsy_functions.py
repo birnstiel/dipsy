@@ -128,7 +128,7 @@ class Opacity(object):
             dshapr
 
         kwargs : keyword dict
-            they are passed to the interpolation. This way
+            they are passed to the `RegularGridInterpolator`. This way
             it is possible to turn off or change the interpolation method
             (in log-log space for the opacities, in log-linear space
             for g), e.g. by passing keywords like `bounds_error=True`.
