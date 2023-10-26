@@ -132,6 +132,8 @@ class Opacity(object):
             it is possible to turn off or change the interpolation method
             (in log-log space for the opacities, in log-linear space
             for g), e.g. by passing keywords like `bounds_error=True`.
+
+            For g, the extrapolation will be set to nearest neighbor
         """
 
         kwargs['fill_value'] = kwargs.get('fill_value', None)
@@ -160,6 +162,7 @@ class Opacity(object):
         self._interp_k_abs = RegularGridInterpolator((np.log10(self._lam), np.log10(self._a)), np.log10(self._k_abs).T, **kwargs)
         self._interp_k_sca = RegularGridInterpolator((np.log10(self._lam), np.log10(self._a)), np.log10(self._k_sca).T, **kwargs)
         if self._g is not None:
+            kwargs['method'] = 'nearest'
             self._interp_g = RegularGridInterpolator((np.log10(self._lam), np.log10(self._a)), self._g.T, **kwargs)
 
     def _load_from_dict_like(self, input):
