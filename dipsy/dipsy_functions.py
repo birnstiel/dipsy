@@ -13,9 +13,12 @@ from .utils import bplanck
 
 import dsharp_opac
 
-observables = namedtuple('observables', ['rf', 'flux_t', 'tau', 'I_nu', 'a', 'sig_da'])
-dustpy_result = namedtuple('dustpy_result', ['r', 'a_max', 'a', 'a_mean', 'sig_d', 'sig_da', 'sig_g', 'time', 'T'])
-rosotti_result = namedtuple('rosotti_result', ['a_max', 'time', 'T', 'sig_d', 'sig_g', 'd2g', 'r', 'L_star', 'M_star', 'T_star'])
+observables = namedtuple(
+    'observables', ['rf', 'flux_t', 'tau', 'I_nu', 'a', 'sig_da'])
+dustpy_result = namedtuple('dustpy_result', [
+                           'r', 'a_max', 'a', 'a_mean', 'sig_d', 'sig_da', 'sig_g', 'time', 'T'])
+rosotti_result = namedtuple('rosotti_result', [
+                            'a_max', 'time', 'T', 'sig_d', 'sig_g', 'd2g', 'r', 'L_star', 'M_star', 'T_star'])
 
 
 def get_powerlaw_dust_distribution(sigma_d, a_max, q=3.5, na=10, a0=None, a1=None):
@@ -92,10 +95,12 @@ def get_powerlaw_dust_distribution(sigma_d, a_max, q=3.5, na=10, a0=None, a1=Non
                 sig_da[ir, i_up] = np.log(a_max[ir] / a_i[i_up])
             else:
                 for ia in range(i_up):
-                    sig_da[ir, ia] = a_i[ia + 1]**(4 - q[ir]) - a_i[ia]**(4 - q[ir])
+                    sig_da[ir, ia] = a_i[ia +
+                                         1]**(4 - q[ir]) - a_i[ia]**(4 - q[ir])
 
                 # filling the bin that contains a_max
-                sig_da[ir, i_up] = a_max[ir]**(4 - q[ir]) - a_i[i_up]**(4 - q[ir])
+                sig_da[ir, i_up] = a_max[ir]**(4 - q[ir]) - \
+                    a_i[i_up]**(4 - q[ir])
 
         # normalize
 
@@ -159,11 +164,14 @@ class Opacity(object):
             with np.load(input) as f:
                 self._load_from_dict_like(f)
 
-        self._interp_k_abs = RegularGridInterpolator((np.log10(self._lam), np.log10(self._a)), np.log10(self._k_abs).T, **kwargs)
-        self._interp_k_sca = RegularGridInterpolator((np.log10(self._lam), np.log10(self._a)), np.log10(self._k_sca).T, **kwargs)
+        self._interp_k_abs = RegularGridInterpolator(
+            (np.log10(self._lam), np.log10(self._a)), np.log10(self._k_abs).T, **kwargs)
+        self._interp_k_sca = RegularGridInterpolator(
+            (np.log10(self._lam), np.log10(self._a)), np.log10(self._k_sca).T, **kwargs)
         if self._g is not None:
             kwargs['method'] = 'nearest'
-            self._interp_g = RegularGridInterpolator((np.log10(self._lam), np.log10(self._a)), self._g.T, **kwargs)
+            self._interp_g = RegularGridInterpolator(
+                (np.log10(self._lam), np.log10(self._a)), self._g.T, **kwargs)
 
     def _load_from_dict_like(self, input):
         for attr in ['a', 'lam', 'k_abs', 'k_sca', 'g', 'rho_s']:
@@ -196,7 +204,8 @@ class Opacity(object):
                 a[:, None] > 100 * lam[None, :] / (2 * np.pi)
             )
         if not np.all(mask):
-            raise ValueError('extrapolating too close to the interference part of the opacities')
+            raise ValueError(
+                'extrapolating too close to the interference part of the opacities')
 
     def get_opacities(self, a, lam):
         """
@@ -360,10 +369,12 @@ def get_observables(r, sig_g, sig_d, a_max, T, opacity, lam, distance=140 * pc,
 
     # get the size distribution
     if (a is not None and sig_d.ndim != 2) or (a is None and sig_d.ndim != 1):
-        raise ValueError('either a=None and sig_d.ndim=1 or a!=None and sig_d.ndim=2')
+        raise ValueError(
+            'either a=None and sig_d.ndim=1 or a!=None and sig_d.ndim=2')
 
     if a is None:
-        a, a_i, sig_da = get_powerlaw_dust_distribution(sig_d, a_max, q=q, na=na, a0=a0, a1=a1)
+        a, a_i, sig_da = get_powerlaw_dust_distribution(
+            sig_d, a_max, q=q, na=na, a0=a0, a1=a1)
     else:
         sig_da = sig_d
 
@@ -403,7 +414,8 @@ def get_observables(r, sig_g, sig_d, a_max, T, opacity, lam, distance=140 * pc,
             eps_avg = k_a_mean / (k_a_mean + k_s_mean)
 
             # 3. plug those into the solution
-            I_nu[ilam, :] = bplanck(freq, T) * I_over_B_EB(tau[ilam, :], eps_avg)
+            I_nu[ilam, :] = bplanck(freq, T) * \
+                I_over_B_EB(tau[ilam, :], eps_avg)
         else:
             dummy = np.where(tau[ilam, :] > 1e-15,
                              (1.0 - np.exp(-tau[ilam, :])),
@@ -412,8 +424,10 @@ def get_observables(r, sig_g, sig_d, a_max, T, opacity, lam, distance=140 * pc,
 
     # calculate the fluxes
 
-    flux = distance**-2 * cumtrapz(2 * np.pi * r * I_nu, x=r, axis=1, initial=0)
-    flux_t = flux[:, -1] / 1e-23  # integrated flux density in Jy (sanity check: TW Hya @ 870 micron and 54 parsec is about 1.5 Jy)
+    flux = np.cos(inc) * distance**-2 * \
+        cumtrapz(2 * np.pi * r * I_nu, x=r, axis=1, initial=0)
+    # integrated flux density in Jy (sanity check: TW Hya @ 870 micron and 54 parsec is about 1.5 Jy)
+    flux_t = flux[:, -1] / 1e-23
 
     # converted intensity to Jy/arcsec**2
 
@@ -488,7 +502,8 @@ def get_all_observables(d, opac, lam, amax=True, q=3.5, flux_fraction=0.68, scat
 
         # assign the correct q
 
-        q_array = np.where(d.a_max[it, :] > np.minimum(d.a_fr[it, :], d.a_df[it, :]), q_f, q_d)
+        q_array = np.where(d.a_max[it, :] > np.minimum(
+            d.a_fr[it, :], d.a_df[it, :]), q_f, q_d)
         obs = get_observables(d.r, d.sig_g[it, :], sig_d[it], d.a_max[it, :], d.T[it, :], opac, lam,
                               q=q_array, a=_a, flux_fraction=flux_fraction, scattering=scattering, inc=inc)
         rf += [obs.rf]
@@ -555,7 +570,8 @@ def read_rosotti_data(fname):
             amax[idx, :] = dset[f'time_{idx}/yso_0/Disk/amax'][()]
             T[idx, :] = dset[f'time_{idx}/yso_0/Disk/T'][()]
 
-            age[idx] = dset[f'time_{idx}/yso_0/evolution_time'][()] / (2 * np.pi) * year
+            age[idx] = dset[f'time_{idx}/yso_0/evolution_time'][()] / \
+                (2 * np.pi) * year
             L_star[idx] = dset[f'time_{idx}/yso_0/Star/llum'][()] * L_sun
             M_star[idx] = dset[f'time_{idx}/yso_0/Star/mass'][()] * M_sun
             T_star[idx] = dset[f'time_{idx}/yso_0/Star/teff'][()]
@@ -642,17 +658,22 @@ def read_dustpy_data(data_path, time=None):
     # Obtain the alpha-viscosity
     # Visc =  Alpha * cs * cs / OmegaK
 
-    a_mean = (a * sig_da * np.abs(Vel_d)).sum(-1) / (sig_da * np.abs(Vel_d)).sum(-1)
+    a_mean = (a * sig_da * np.abs(Vel_d)).sum(-1) / \
+        (sig_da * np.abs(Vel_d)).sum(-1)
     a_max = a[sig_da.argmax(-1)]
 
     if time is None:
         time = time_dp
     else:
         f_Td = interp2d(np.log10(r), np.log10(time_dp + 1e-100), np.log10(T))
-        f_sd = interp2d(np.log10(r), np.log10(time_dp + 1e-100), np.log10(sig_d))
-        f_sg = interp2d(np.log10(r), np.log10(time_dp + 1e-100), np.log10(sig_g))
-        f_ax = interp2d(np.log10(r), np.log10(time_dp + 1e-100), np.log10(a_max))
-        f_am = interp2d(np.log10(r), np.log10(time_dp + 1e-100), np.log10(a_mean))
+        f_sd = interp2d(np.log10(r), np.log10(
+            time_dp + 1e-100), np.log10(sig_d))
+        f_sg = interp2d(np.log10(r), np.log10(
+            time_dp + 1e-100), np.log10(sig_g))
+        f_ax = interp2d(np.log10(r), np.log10(
+            time_dp + 1e-100), np.log10(a_max))
+        f_am = interp2d(np.log10(r), np.log10(
+            time_dp + 1e-100), np.log10(a_mean))
 
         T = 10.**f_Td(np.log10(r), np.log10(time + 1e-100))
         sig_d = 10.**f_sd(np.log10(r), np.log10(time + 1e-100))
@@ -662,7 +683,8 @@ def read_dustpy_data(data_path, time=None):
 
         sig_da_new = np.zeros([len(time), len(r), len(a)])
         for ia in range(len(a)):
-            f = interp2d(np.log10(r), np.log10(time_dp + 1e-100), np.log10(sig_da[:, :, ia]))
+            f = interp2d(np.log10(r), np.log10(time_dp + 1e-100),
+                         np.log10(sig_da[:, :, ia]))
             sig_da_new[:, :, ia] = 10.**f(np.log10(r), np.log10(time + 1e-100))
 
         sig_da = sig_da_new
