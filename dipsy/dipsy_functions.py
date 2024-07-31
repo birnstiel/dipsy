@@ -2,7 +2,9 @@
 Functions to calculate observables or read data from simulations
 """
 from pathlib import Path
+from types import SimpleNamespace
 import h5py
+from dustpylib.radtrans.slab.slab import I_over_B_EB, bplanck
 
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
@@ -107,420 +109,6 @@ def get_powerlaw_dust_distribution(sigma_d, a_max, q=3.5, na=10, a0=None, a1=Non
         sig_da[ir, :] = sig_da[ir, :] / sig_da[ir, :].sum() * sigma_d[ir]
 
     return a, a_i, sig_da
-
-
-class Opacity(object):
-    _filename = None
-    _lam = None
-    _a = None
-    _k_abs = None
-    _k_sca = None
-    _g = None
-    _rho_s = None
-    _extrapol = False
-
-    @property
-    def rho_s(self):
-        "material density in g/cm^3"
-        return self._rho_s
-
-    def __init__(self, input=None, **kwargs):
-        """Object to read and interpolate opacities.
-
-        input : str | path
-            the name of the opacity file to be read. If it doesn't
-            exist at the given position, it will try to get it from
-            dshapr
-
-        kwargs : keyword dict
-            they are passed to the `RegularGridInterpolator`. This way
-            it is possible to turn off or change the interpolation method
-            (in log-log space for the opacities, in log-linear space
-            for g), e.g. by passing keywords like `bounds_error=True`.
-
-            For g, the extrapolation will be set to nearest neighbor
-        """
-
-        kwargs['fill_value'] = kwargs.get('fill_value', None)
-        kwargs['bounds_error'] = kwargs.get('bounds_error', False)
-
-        # set default opacities
-
-        if input is None:
-            input = 'default_opacities_smooth.npz'
-
-        if type(input) is dict:
-            self._load_from_dict_like(dict)
-        else:
-            if type(input) is str:
-                input = Path(input)
-
-            if not input.is_file():
-                input = Path(dsharp_opac.get_datafile(str(input)))
-                if not input.is_file():
-                    raise ValueError('unknown input')
-
-            self._filename = str(input)
-            with np.load(input) as f:
-                self._load_from_dict_like(f)
-
-        self._interp_k_abs = RegularGridInterpolator(
-            (np.log10(self._lam), np.log10(self._a)), np.log10(self._k_abs).T, **kwargs)
-        self._interp_k_sca = RegularGridInterpolator(
-            (np.log10(self._lam), np.log10(self._a)), np.log10(self._k_sca).T, **kwargs)
-        if self._g is not None:
-            kwargs['method'] = 'nearest'
-            self._interp_g = RegularGridInterpolator(
-                (np.log10(self._lam), np.log10(self._a)), self._g.T, **kwargs)
-
-    def _load_from_dict_like(self, input):
-        for attr in ['a', 'lam', 'k_abs', 'k_sca', 'g', 'rho_s']:
-            if attr in input:
-                setattr(self, '_' + attr, input[attr])
-            else:
-                print(f'{attr} not in input')
-        if self._rho_s is not None:
-            self._rho_s = float(self._rho_s)
-
-    def _check_input(self, a, lam):
-        """Checks if the input is asking for extrapolation in a reasonable range
-
-        Parameters
-        ----------
-        a : float | array
-            particle size in cm
-
-        lam : float | array
-            wavelength in cm
-        """
-        # either we are in the grid of known opacities
-        # OR we are at large enough optical sizes to be
-        # properly extrapolating
-        mask = \
-            (
-                ((a <= self._a[-1]) & (a >= self._a[0]))[:, None] &
-                ((lam <= self._lam[-1]) & (lam >= self._lam[0]))[None, :]
-            ) | (
-                a[:, None] > 100 * lam[None, :] / (2 * np.pi)
-            )
-        if not np.all(mask):
-            raise ValueError(
-                'extrapolating too close to the interference part of the opacities')
-
-    def get_opacities(self, a, lam):
-        """
-        Returns the absorption and scattering opacities for the given particle
-        size a and wavelength lam.
-
-        Arguments:
-        ----------
-
-        a : float | array
-            particle size in cm
-
-        lam : float | array
-            wavelength in cm
-
-        Returns:
-        --------
-        k_abs, k_sca : arrays
-            absorption and scattering opacities, each of shape (len(a), len(lam))
-        """
-        self._check_input(a, lam)
-        return \
-            10.**self._interp_k_abs(tuple(np.meshgrid(np.log10(lam), np.log10(a)))), \
-            10.**self._interp_k_sca(tuple(np.meshgrid(np.log10(lam), np.log10(a)))),
-
-    def get_g(self, a, lam):
-        """
-        Returns the asymmetry parameter for the given particle
-        size a and wavelength lam.
-
-        Arguments:
-        ----------
-
-        a : float | array
-            particle size in cm
-
-        lam : float | array
-            wavelength in cm
-
-        Returns:
-        --------
-        g : arrays
-            asymmetry parameter, array of shape (len(a), len(lam))
-        """
-        if self._g is None:
-            return np.zeros([len(np.array(a, ndmin=1)), len(np.array(lam, ndmin=1))]).squeeze()
-        else:
-            self._check_input(a, lam)
-            return self._interp_g(tuple(np.meshgrid(np.log10(lam), np.log10(a))))
-
-    def get_k_ext_eff(self, a, lam):
-        """
-        Returns the effective extinction opacity for the given particle
-        size `a` and wavelength `lam`.
-
-            k_ext_eff = k_abs + (1.0 - g) * k_sca
-
-        Arguments:
-        ----------
-
-        a : float | array
-            particle size in cm
-
-        lam : float | array
-            wavelength in cm
-
-        Returns:
-        --------
-        k_ext_eff : arrays
-            effective extinction opacity, array of shape (len(a), len(lam))
-        """
-        k_a, k_s = self.get_opacities(a, lam)
-        g = self.get_g(a, lam)
-
-        k_se = (1.0 - g) * k_s
-        k_ext_eff = k_a + k_se
-        return k_ext_eff
-
-
-def get_observables(r, sig_g, sig_d, a_max, T, opacity, lam, distance=140 * pc,
-                    flux_fraction=0.68, a=None, q=3.5, na=50, a0=None, a1=None, scattering=True,
-                    inc=0.0):
-    """
-    Calculates the radial profiles of the (vertical) optical depth and the intensity for a given simulation
-    at a given time (using the closest simulation snapshot).
-
-    Arguments:
-    ----------
-
-    r : array
-        radial array [cm]
-
-    sig_g : array
-        gas surface density on r [g/cm^2]
-
-    sig_d : 1d-array | 2d-array
-        - 1d: dust surface density on r [g/cm^2]
-        - 2d: dust surface density on r and a shape=(len(r), len(a)) [g/cm^2]
-
-    a_max : array
-        maximum particle size on r [cm]
-
-    T : array
-        temperature grid on r [K]
-
-    opacity : instance of Opacity
-        the opacity to use for the calculation
-
-    lam : array
-        the wavelengths at which to calculate the observables [cm]
-
-    Keywords:
-    ---------
-
-    distance : float
-        distance to source [cm]
-
-    flux_fraction : float
-        at which fraction of the total flux the effective radius is defined [-]
-
-    a : None | float
-        if size distribution information is known (= sig_d is 2D), pass the
-        particle size array here
-
-    q : float | array
-        size exponent to use: n(a) ~ a^-q, so 3.5=MRN
-        if array, it has to have the same length as sig_d
-
-    na : int
-        length of the particle size grid
-
-    a0 : float
-        minimum particle size to use for the dust size distribution [cm]
-
-    a1 : float
-        maximum particle size to use for the dust size distribution [cm]
-
-    scattering : bool
-        if True, use the scattering solution, else just absorption
-
-    inc : float
-        inclination, default is 0.0 = face-on. This is just treated as
-        increasing the path length across the slab model.
-
-    Output:
-    -------
-
-    rf : array
-        effective radii for every wavelength [cm]
-
-    flux_t : array
-        integrated flux for every wavelength [Jy]
-
-    tau,Inu : array
-        optical depth and intensity profiles at every wavelength [-, Jy/arcsec**2]
-
-    sig_da, : array
-        reconstructed particle size distribution on grid (res.a, res.x)
-    """
-    from scipy.integrate import cumtrapz
-
-    # get the size distribution
-    if (a is not None and sig_d.ndim != 2) or (a is None and sig_d.ndim != 1):
-        raise ValueError(
-            'either a=None and sig_d.ndim=1 or a!=None and sig_d.ndim=2')
-
-    if a is None:
-        a, a_i, sig_da = get_powerlaw_dust_distribution(
-            sig_d, a_max, q=q, na=na, a0=a0, a1=a1)
-    else:
-        sig_da = sig_d
-
-    sig_d_tot = sig_da.sum(-1)
-
-    lam = np.array(lam, ndmin=1)
-    n_lam = len(lam)
-
-    I_nu = np.zeros([n_lam, len(r)])
-    tau = np.zeros([n_lam, len(r)])
-
-    # get opacities at our wavelength and particle sizes
-
-    if scattering:
-        k_a, k_s = opacity.get_opacities(a, lam)
-        g = opacity.get_g(a, lam).T
-        k_a = k_a.T
-        k_s = k_s.T
-
-        k_se = (1.0 - g) * k_s
-        k_ext = k_a + k_se
-    else:
-        k_ext = opacity.get_opacities(a, lam)[0].T
-
-    for ilam, _lam in enumerate(lam):
-        freq = c_light / _lam
-
-        # Calculate intensity profile
-        # 1. optical depth
-        tau[ilam, :] = (sig_da * k_ext[ilam, :].T).sum(-1) / np.cos(inc)
-        tau = np.minimum(100., tau)
-
-        if scattering:
-            # 2. a size averaged opacity and from that the averaged epsilon
-            k_a_mean = (sig_da * k_a[ilam, :].T).sum(-1) / sig_d_tot
-            k_s_mean = (sig_da * k_se[ilam, :].T).sum(-1) / sig_d_tot
-            eps_avg = k_a_mean / (k_a_mean + k_s_mean)
-
-            # 3. plug those into the solution
-            I_nu[ilam, :] = bplanck(freq, T) * \
-                I_over_B_EB(tau[ilam, :], eps_avg)
-        else:
-            dummy = np.where(tau[ilam, :] > 1e-15,
-                             (1.0 - np.exp(-tau[ilam, :])),
-                             tau[ilam, :])
-            I_nu[ilam, :] = bplanck(freq, T) * dummy
-
-    # calculate the fluxes
-
-    flux = np.cos(inc) * distance**-2 * \
-        cumtrapz(2 * np.pi * r * I_nu, x=r, axis=1, initial=0)
-    # integrated flux density in Jy (sanity check: TW Hya @ 870 micron and 54 parsec is about 1.5 Jy)
-    flux_t = flux[:, -1] / 1e-23
-
-    # converted intensity to Jy/arcsec**2
-
-    I_nu = I_nu / jy_sas
-
-    # interpolate radius whithin which >=68% of the dust mass is
-
-    rf = np.array([np.interp(flux_fraction, _f / _f[-1], r) for _f in flux])
-
-    return observables(rf, flux_t, tau, I_nu, a, sig_da)
-
-
-def get_all_observables(d, opac, lam, amax=True, q=3.5, flux_fraction=0.68, scattering=True, inc=0.0):
-    """Calculate the radius and total flux for all snapshots of a simulation
-
-    Arguments:
-    ----------
-
-    d : namedtuple
-        the output of read_dustpy_data, read_rosotti_data, or run_bump_model
-
-    opac : instance of Opacity
-        which opacity to use
-
-    lam : float | array
-        wavelength(s) of the observations
-
-    amax : bool
-        if True, will always use a power-law distribution, even if size distribution
-        is available.
-
-    q : float | list of two elements
-        size distribution exponent, either a single float to be used everywhere
-        or a two-element list to specify q_f and q_d to be used in the fragmentation
-        and drift limited regimes, respectively.
-
-    flux_fraction : float
-        at which fraction of the total flux the effective radius is defined [-]
-
-    scattering : bool
-        whether or not to include scattering
-
-    inc : float
-        inclination, default is 0.0 = face-on. This is just treated as
-        increasing the path length across the slab model.
-
-    Returns:
-    --------
-    rf : array
-        e.g. 68% effective radii for all snapshots [cm]
-
-    flux : array
-        total flux for all snapshots [Jy]
-    """
-    rf = []
-    flux = []
-    tau = []
-    I_nu = []
-    a = []
-    sig_da = []
-
-    q_f, q_d = q * np.ones(2)
-
-    if amax is False and hasattr(d, 'sig_da'):
-        _a = d.a
-        sig_d = d.sig_da
-    else:
-        _a = None
-        sig_d = d.sig_d
-
-    for it in range(len(d.time)):
-
-        # assign the correct q
-
-        q_array = np.where(d.a_max[it, :] > np.minimum(
-            d.a_fr[it, :], d.a_df[it, :]), q_f, q_d)
-        obs = get_observables(d.r, d.sig_g[it, :], sig_d[it], d.a_max[it, :], d.T[it, :], opac, lam,
-                              q=q_array, a=_a, flux_fraction=flux_fraction, scattering=scattering, inc=inc)
-        rf += [obs.rf]
-        flux += [obs.flux_t]
-        tau += [obs.tau]
-        I_nu += [obs.I_nu]
-        a += [obs.a]
-        sig_da += [obs.sig_da]
-
-    rf = np.array(rf)
-    flux = np.array(flux)
-    tau = np.array(tau)
-    I_nu = np.array(I_nu)
-    a = np.array(a)
-    sig_da = np.array(sig_da)
-
-    return observables(rf, flux, tau, I_nu, a, sig_da)
 
 
 def read_rosotti_data(fname):
@@ -694,123 +282,252 @@ def read_dustpy_data(data_path, time=None):
     return dp
 
 
-def J_over_B(tauz_in, eps_e, tau):
-    """Calculate the mean intensity in units of the Planck function value.
-
-    Note: This follows Eq. 15 of Birnstiel et al. 2018. We later found
-    that this was already solved in Miyake & Nakagawa 1993 (and used
-    in Sierra et al. 2017). The equations are written slightly differently
-    but are equivalent.
-
-    Parameters
-    ----------
-    tauz_in : float | array
-        optical depth at which the mean intensity should be returned
-    eps_e : float
-        effective absorption probability (= 1 - effective albedo)
-    tau : float
-        total optical depth
-
-    Returns
-    -------
-    float | array
-        mean intensity evaluated at `tauz_in`
+def get_observables(r, sig_g, sig_d, a_max, T, opacity, lam, distance=140 * pc,
+                    flux_fraction=0.68, a=None, q=3.5, na=50, a0=None, a1=None, scattering=True,
+                    inc=0.0):
     """
-    # our tauz goes from 0 to tau
-    # while in the paper it goes from -tau/2 to +tau/2
-    if isinstance(tauz_in, np.ndarray):
-        tauz = tauz_in.copy() - tau / 2
+    Calculates the radial profiles of the (vertical) optical depth and the intensity for a given simulation
+    at a given time (using the closest simulation snapshot).
+
+    Arguments:
+    ----------
+
+    r : array
+        radial array [cm]
+
+    sig_g : array
+        gas surface density on r [g/cm^2]
+
+    sig_d : 1d-array | 2d-array
+        - 1d: dust surface density on r [g/cm^2]
+        - 2d: dust surface density on r and a shape=(len(r), len(a)) [g/cm^2]
+
+    a_max : array
+        maximum particle size on r [cm]
+
+    T : array
+        temperature grid on r [K]
+
+    opacity : instance of Opacity
+        the opacity to use for the calculation
+
+    lam : array
+        the wavelengths at which to calculate the observables [cm]
+
+    Keywords:
+    ---------
+
+    distance : float
+        distance to source [cm]
+
+    flux_fraction : float
+        at which fraction of the total flux the effective radius is defined [-]
+
+    a : None | float
+        if size distribution information is known (= sig_d is 2D), pass the
+        particle size array here
+
+    q : float | array
+        size exponent to use: n(a) ~ a^-q, so 3.5=MRN
+        if array, it has to have the same length as sig_d
+
+    na : int
+        length of the particle size grid
+
+    a0 : float
+        minimum particle size to use for the dust size distribution [cm]
+
+    a1 : float
+        maximum particle size to use for the dust size distribution [cm]
+
+    scattering : bool
+        if True, use the scattering solution, else just absorption
+
+    inc : float
+        inclination, default is 0.0 = face-on. This is just treated as
+        increasing the path length across the slab model.
+
+    Output:
+    -------
+
+    rf : array
+        effective radii for every wavelength [cm]
+
+    flux_t : array
+        integrated flux for every wavelength [Jy]
+
+    tau,Inu : array
+        optical depth and intensity profiles at every wavelength [-, Jy/arcsec**2]
+
+    sig_da, : array
+        reconstructed particle size distribution on grid (res.a, res.x)
+    """
+    from scipy.integrate import cumtrapz
+
+    # get the size distribution
+    if (a is not None and sig_d.ndim != 2) or (a is None and sig_d.ndim != 1):
+        raise ValueError(
+            'either a=None and sig_d.ndim=1 or a!=None and sig_d.ndim=2')
+
+    if a is None:
+        a, a_i, sig_da = get_powerlaw_dust_distribution(
+            sig_d, a_max, q=q, na=na, a0=a0, a1=a1)
     else:
-        tauz = tauz_in - tau / 2
+        sig_da = sig_d
 
-    b = 1.0 / (
-        (1.0 - np.sqrt(eps_e)) * np.exp(-np.sqrt(3 * eps_e) * tau) + 1 + np.sqrt(eps_e))
+    sig_d_tot = sig_da.sum(-1)
 
-    J = 1.0 - b * (
-        np.exp(-np.sqrt(3.0 * eps_e) * (0.5 * tau - tauz)) +
-        np.exp(-np.sqrt(3.0 * eps_e) * (0.5 * tau + tauz)))
+    lam = np.array(lam, ndmin=1)
+    n_lam = len(lam)
 
-    return J
+    I_nu = np.zeros([n_lam, len(r)])
+    tau = np.zeros([n_lam, len(r)])
+
+    # get opacities at our wavelength and particle sizes
+
+    if scattering:
+        k_a, k_s = opacity.get_opacities(a, lam)
+        g = opacity.get_g(a, lam).T
+        k_a = k_a.T
+        k_s = k_s.T
+
+        k_se = (1.0 - g) * k_s
+        k_ext = k_a + k_se
+    else:
+        k_ext = opacity.get_opacities(a, lam)[0].T
+
+    for ilam, _lam in enumerate(lam):
+        freq = c_light / _lam
+
+        # Calculate intensity profile
+        # 1. optical depth
+        tau[ilam, :] = (sig_da * k_ext[ilam, :].T).sum(-1) / np.cos(inc)
+        tau = np.minimum(100., tau)
+
+        if scattering:
+            # 2. a size averaged opacity and from that the averaged epsilon
+            k_a_mean = (sig_da * k_a[ilam, :].T).sum(-1) / sig_d_tot
+            k_s_mean = (sig_da * k_se[ilam, :].T).sum(-1) / sig_d_tot
+            eps_avg = k_a_mean / (k_a_mean + k_s_mean)
+
+            # 3. plug those into the solution
+            I_nu[ilam, :] = bplanck(freq, T) * \
+                I_over_B_EB(tau[ilam, :], eps_avg)
+        else:
+            dummy = np.where(tau[ilam, :] > 1e-15,
+                             (1.0 - np.exp(-tau[ilam, :])),
+                             tau[ilam, :])
+            I_nu[ilam, :] = bplanck(freq, T) * dummy
+
+    # calculate the fluxes
+
+    flux = np.cos(inc) * distance**-2 * \
+        cumtrapz(2 * np.pi * r * I_nu, x=r, axis=1, initial=0)
+    # integrated flux density in Jy (sanity check: TW Hya @ 870 micron and 54 parsec is about 1.5 Jy)
+    flux_t = flux[:, -1] / 1e-23
+
+    # converted intensity to Jy/arcsec**2
+
+    I_nu = I_nu / jy_sas
+
+    # interpolate radius whithin which >=68% of the dust mass is
+
+    rf = np.array([np.interp(flux_fraction, _f / _f[-1], r) for _f in flux])
+
+    return SimpleNamespace(
+        rf=rf,
+        flux_t=flux_t,
+        tau=tau,
+        I_nu=I_nu,
+        a=a,
+        sig_da=sig_da)
 
 
-def S_over_B(tauz, eps_e, tau):
-    """Calculate the source function in units of the Planck function value.
+def get_all_observables(d, opac, lam, amax=True, q=3.5, flux_fraction=0.68, scattering=True, inc=0.0):
+    """Calculate the radius and total flux for all snapshots of a simulation
 
-    Note: This follows Eq. 19 of Birnstiel et al. 2018.
-
-    Parameters
+    Arguments:
     ----------
-    tauz : float | array
-        optical depth at which the mean source function should be returned
-    eps_e : float
-        effective absorption probability (= 1 - effective albedo)
-    tau : float
-        total optical depth
 
-    Returns
-    -------
-    float | array
-        source function evaluated at `tauz`
+    d : namedtuple
+        the output of read_dustpy_data, read_rosotti_data, or run_bump_model
+
+    opac : instance of Opacity
+        which opacity to use
+
+    lam : float | array
+        wavelength(s) of the observations
+
+    amax : bool
+        if True, will always use a power-law distribution, even if size distribution
+        is available.
+
+    q : float | list of two elements
+        size distribution exponent, either a single float to be used everywhere
+        or a two-element list to specify q_f and q_d to be used in the fragmentation
+        and drift limited regimes, respectively.
+
+    flux_fraction : float
+        at which fraction of the total flux the effective radius is defined [-]
+
+    scattering : bool
+        whether or not to include scattering
+
+    inc : float
+        inclination, default is 0.0 = face-on. This is just treated as
+        increasing the path length across the slab model.
+
+    Returns:
+    --------
+    rf : array
+        e.g. 68% effective radii for all snapshots [cm]
+
+    flux : array
+        total flux for all snapshots [Jy]
     """
-    return eps_e + (1.0 - eps_e) * J_over_B(tauz, eps_e, tau)
+    rf = []
+    flux = []
+    tau = []
+    I_nu = []
+    a = []
+    sig_da = []
 
+    q_f, q_d = q * np.ones(2)
 
-def I_over_B(tau_total, eps_e, mu=1, ntau=300):
-    """Integrates the scattering solution of Birnstiel 2018 numerically.
+    if amax is False and hasattr(d, 'sig_da'):
+        _a = d.a
+        sig_d = d.sig_da
+    else:
+        _a = None
+        sig_d = d.sig_d
 
-    This integrates Eq. 17 of Birnstiel 2018. See note for `J_over_B`.
+    for it in range(len(d.time)):
 
-    Parameters
-    ----------
-    tau_total : float
-        total optical depth
-    eps_e : float
-        effective extinction probablility (1-albedo)
-    mu : float, optional
-        cosine of the incidence angle, by default 1
-    ntau : int, optional
-        number of grid points, by default 300
+        # assign the correct q
 
-    Returns
-    -------
-    float
-        outgoing intensity in units of the planck function.
-    """
-    tau = np.linspace(0, tau_total, ntau)
-    Inu = np.zeros(ntau)
-    Jnu = J_over_B(tau, eps_e, tau_total)
-    # the first 1.0 here is a placeholder for Bnu, just for reference
-    Snu = eps_e * 1.0 + (1.0 - eps_e) * Jnu
-    for i in range(1, ntau):
-        dtau = (tau[i] - tau[i - 1]) / mu
-        expdtray = np.exp(-dtau)
-        srcav = 0.5 * (Snu[i] + Snu[i - 1])
-        Inu[i] = expdtray * Inu[i - 1] + (1 - expdtray) * srcav
-    return Inu[-1]
+        q_array = np.where(d.a_max[it, :] > np.minimum(
+            d.a_fr[it, :], d.a_df[it, :]), q_f, q_d)
+        obs = get_observables(d.r, d.sig_g[it, :], sig_d[it], d.a_max[it, :], d.T[it, :], opac, lam,
+                              q=q_array, a=_a, flux_fraction=flux_fraction, scattering=scattering, inc=inc)
+        rf += [obs.rf]
+        flux += [obs.flux_t]
+        tau += [obs.tau]
+        I_nu += [obs.I_nu]
+        a += [obs.a]
+        sig_da += [obs.sig_da]
 
+    rf = np.array(rf)
+    flux = np.array(flux)
+    tau = np.array(tau)
+    I_nu = np.array(I_nu)
+    a = np.array(a)
+    sig_da = np.array(sig_da)
 
-def I_over_B_EB(tau, eps_e, mu=1):
-    """"same as I_over_B but using the Eddington-Barbier approximation.
-
-    This solves Eq. 19 of Birnstiel et al. 2018, but see also notes
-    in `J_over_B`.
-
-    Parameters
-    ----------
-    tau : float
-        total optical depth
-    eps_e : float
-        effective extinction probablility (1-albedo)
-    mu : float, optional
-        cosine of the incidence angle, by default 1
-
-    Returns
-    -------
-    float
-        outgoing intensity in units of the planck function.
-    """
-    arg = np.where(tau > 2. / 3. * mu, tau - 2. / 3. * mu, tau)
-    dummy = np.where(tau / mu > 1e-15,
-                     1.0 - np.exp(-tau / mu),
-                     tau / mu)
-    return dummy * S_over_B(arg, eps_e, tau)
+    return SimpleNamespace(
+        rf=rf,
+        flux=flux,
+        tau=tau,
+        I_nu=I_nu,
+        a=a,
+        sig_da=sig_da,
+    )

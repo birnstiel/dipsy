@@ -1,7 +1,9 @@
 .ipynb_checkpoints/
+.jupyter/
 __pycache__
 dipsy.egg-info/
 dipsy/tracks
 build/
 *.cpython*
 *.mod
+./dipsy.egg-info/

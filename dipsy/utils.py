@@ -17,6 +17,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 import h5py
+from dustpylib.radtrans.slab.slab import bplanck
 
 from .cgs_constants import k_B, h, c_light
 
@@ -82,7 +83,8 @@ def colored_line(x, y, time, colorbar=False, ax=None, cmap='viridis',
     lc.set_linewidth(2)
 
     if text is not None:
-        ax.text(x[-1], y[-1], text, c='w', horizontalalignment='center', verticalalignment='center', fontsize=6)
+        ax.text(x[-1], y[-1], text, c='w', horizontalalignment='center',
+                verticalalignment='center', fontsize=6)
 
     line = ax.add_collection(lc)
 
@@ -90,45 +92,14 @@ def colored_line(x, y, time, colorbar=False, ax=None, cmap='viridis',
         if type(cmap) is str:
             cmap = plt.get_cmap(cmap)
         c = kwargs.get('c', kwargs.get('color', cmap(0.75)))
-        ax.scatter(x[0], y[0], c=[c], label=label, zorder=lc.get_zorder() + 1, s=50)
+        ax.scatter(x[0], y[0], c=[c], label=label,
+                   zorder=lc.get_zorder() + 1, s=50)
         ax.scatter(x[-1], y[-1], c=[c], zorder=lc.get_zorder() + 1, s=50)
 
     if colorbar:
         ax.figure.colorbar(line, ax=ax)
 
     return ax, line
-
-
-def bplanck(freq, temp):
-    """
-    This function computes the Planck function
-
-                   2 h nu^3 / c^2
-       B_nu(T)  = ------------------    [ erg / cm^2 s ster Hz ]
-                  exp(h nu / kT) - 1
-
-    Arguments:
-     freq  [Hz]            = Frequency in Herz (can be array)
-     temp  [K]             = Temperature in Kelvin (can be array)
-    """
-    const1 = h / k_B
-    const2 = 2 * h / c_light**2
-    const3 = 2 * k_B / c_light**2
-    x = const1 * freq / (temp + 1e-99)
-    if np.isscalar(x):
-        if x > 500.:
-            x = 500.
-    else:
-        x[np.where(x > 500.)] = 500.
-    bpl = const2 * (freq**3) / ((np.exp(x) - 1.e0) + 1e-99)
-    bplrj = const3 * (freq**2) * temp
-    if np.isscalar(x):
-        if x < 1.e-3:
-            bpl = bplrj
-    else:
-        ii = x < 1.e-3
-        bpl[ii] = bplrj[ii]
-    return bpl
 
 
 def nuker_profile(rho, rhot, alpha, beta, gamma, N=1):
@@ -169,7 +140,8 @@ def nuker_profile(rho, rhot, alpha, beta, gamma, N=1):
     profile : array
         normalized Nuker profile on radial grid rho
     """
-    profile = (rho / rhot)**-gamma * (1 + (rho / rhot)**alpha)**((gamma - beta) / alpha)
+    profile = (rho / rhot)**-gamma * (1 + (rho / rhot)
+                                      ** alpha)**((gamma - beta) / alpha)
     profile = profile * N / np.trapz(2.0 * np.pi * rho * profile, x=rho)
     return profile
 
