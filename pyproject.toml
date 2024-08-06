@@ -22,7 +22,7 @@ maintainers = [
   { name = "Tilman Birnstiel", email = "til.birnstiel@lmu.de" }
 ]
 license = { file = 'LICENSE' }
-dependencies = ['numpy', 'matplotlib', 'astropy', 'astroquery', 'lifelines']
+dependencies = ['numpy', 'matplotlib', 'astropy', 'astroquery', 'lifelines', 'h5py', 'pandas']
 
 
 [project.urls]
