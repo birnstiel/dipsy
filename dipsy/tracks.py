@@ -219,7 +219,12 @@ class track(object):
             with request.urlopen(url) as remotefile:
                 meta = remotefile.info()
                 file_name = meta.get_filename()
-                file_size = int(meta['Content-Length'])
+                file_size = int(meta['Content-Length'] or 0)
+                if file_size == 0:
+                    file_size = 1024
+                    fmt = '2.2'
+                else:
+                    fmt = '2.2%'
 
                 downloaded_files += [[file_name, z]]
 
@@ -236,7 +241,7 @@ class track(object):
                         file_size_dl += len(buf)
                         f.write(buf)
 
-                        sys.stdout.write("\r{}: {:2.2%}".format(file_name, float(file_size_dl) / file_size))
+                        sys.stdout.write(f"\r{file_name}: {float(file_size_dl) / file_size:{fmt}}")
                         sys.stdout.flush()
                     print("")
 
