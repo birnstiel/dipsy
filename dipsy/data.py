@@ -4,7 +4,7 @@ access to data sets or observational correlations functions.
 import pickle
 import os
 import warnings
-import pkg_resources
+from importlib.resources import files
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -44,7 +44,7 @@ class Testi2014(object):
         d_pc : array
             distance in parsec
         """
-        fname = pkg_resources.resource_filename(__name__, os.path.join('datasets', 'testi2014.csv'))
+        fname = files(__package__).joinpath('datasets', 'testi2014.csv')
 
         self.F_mm, self.alpha_mm, self.d_pc = \
             np.loadtxt(fname, skiprows=1, delimiter=',', usecols=[0, 1, 3]).T
@@ -117,7 +117,7 @@ class Tripathi2017(object):
         L_mm : array
             log10 of Luminosity at 857 micron [Jy]
         """
-        fname = pkg_resources.resource_filename(__name__, os.path.join('datasets', 'tripathi2017.pickle'))
+        fname = files(__package__).joinpath('datasets', 'tripathi2017.pickle')
 
         with open(fname, 'rb') as fs:
             data = pickle.load(fs)
@@ -171,7 +171,8 @@ class Tripathi2017(object):
         else:
             f = ax.figure
 
-        ax.scatter(self.R_eff[:, 1], self.L_mm[:, 1], c='k', label='Tripathi et al. 2017')
+        ax.scatter(self.R_eff[:, 1], self.L_mm[:, 1],
+                   c='k', label='Tripathi et al. 2017')
         mask = np.isnan(self.R_eff[:, 0])
         # remove the red v markers and the next line as normal dots
         ax.scatter(self.R_eff[mask, 2], self.L_mm[mask, 1], c='k')
@@ -184,7 +185,8 @@ class Tripathi2017(object):
         y = 2.13 + 0.51 * x
 
         # add the following lines to fill in between one sigma
-        ax.plot(y, x, c='0.', ls='--', label=r'$\mathrm{R_{eff} \propto \sqrt{L_{mm}}}$')
+        ax.plot(y, x, c='0.', ls='--',
+                label=r'$\mathrm{R_{eff} \propto \sqrt{L_{mm}}}$')
         if sigma:
             # add the standard deviation
             ax.plot(y + 0.19, x, c='0.75', ls='--')
@@ -283,12 +285,16 @@ class mm_survey_dataset():
             distance with Units
         """
         nu = c.c.cgs / self.lam
-        Bnu = bplanck(nu.cgs.value, self.T0.cgs.value) * u.erg / (u.cm**2 * u.Hz * u.s)
-        kappa = self.kappa0 * (self.lam / self.lam0)**(-self.beta)  # Beckwith 1990
+        Bnu = bplanck(nu.cgs.value, self.T0.cgs.value) * \
+            u.erg / (u.cm**2 * u.Hz * u.s)
+        kappa = self.kappa0 * \
+            (self.lam / self.lam0)**(-self.beta)  # Beckwith 1990
 
-        self.Mearth = (self.values * self.unit * self.d**2 / (Bnu * kappa)).to(c.M_earth).value
+        self.Mearth = (self.values * self.unit * self.d **
+                       2 / (Bnu * kappa)).to(c.M_earth).value
         if self.errors is not None:
-            self.e_Mearth = (self.errors * self.unit * self.d**2 / (Bnu * kappa)).to(c.M_earth).value
+            self.e_Mearth = (self.errors * self.unit * self.d **
+                             2 / (Bnu * kappa)).to(c.M_earth).value
 
     def calculate_KaplanMaier(self):
         if not lifelines_available:

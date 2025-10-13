@@ -8,7 +8,7 @@ is from
 import os as _os
 import numpy as _np
 from pathlib import Path as _Path
-from pkg_resources import resource_filename
+from importlib.resources import files
 
 import astropy.units as _u
 import astropy.constants as _c
@@ -52,15 +52,18 @@ def get_stellar_properties(m, t, z='01', track_dir=None):
     m /= M_sun
 
     if m < masses[0] or m > masses[-1]:
-        raise ValueError(f'mass {m:.2g} is out of bounds [{masses[0]:.2g}, {masses[-1]:.2g}]')
+        raise ValueError(
+            f'mass {m:.2g} is out of bounds [{masses[0]:.2g}, {masses[-1]:.2g}]')
 
     i_left = masses.searchsorted(m)
 
     if i_left == len(masses) - 1:
         i_left -= 1
 
-    props_left = track(m=f'{masses[i_left]:.1f}', z=z, track_dir=track_dir).get_stellar_params(t)
-    props_right = track(m=f'{masses[i_left + 1]:.1f}', z=z, track_dir=track_dir).get_stellar_params(t)
+    props_left = track(m=f'{masses[i_left]:.1f}',
+                       z=z, track_dir=track_dir).get_stellar_params(t)
+    props_right = track(
+        m=f'{masses[i_left + 1]:.1f}', z=z, track_dir=track_dir).get_stellar_params(t)
 
     eps = (m - masses[i_left]) / (masses[i_left + 1] - masses[i_left])
 
@@ -93,7 +96,7 @@ class track(object):
 
     __doc__ = __doc__.format(', '.join(_zs))
 
-    track_dir = resource_filename(__name__, 'tracks')
+    track_dir = files(__package__).joinpath('tracks')
     track_file = None
 
     @classmethod
@@ -137,7 +140,7 @@ class track(object):
             if ``folder_name`` is not a folder
         """
 
-        if not((z is None) ^ (folder_name is None)):
+        if not ((z is None) ^ (folder_name is None)):
             raise ValueError('need to pass ONE OF (z, folder_name) as keyword')
 
         if folder_name is None:
@@ -161,7 +164,8 @@ class track(object):
         if track_dir is not None:
             self.track_dir = track_dir
 
-        self.track_file = _os.path.join(self.track_dir, 'Z' + z, 'm' + m + 'z' + z + '.hrd')
+        self.track_file = _os.path.join(
+            self.track_dir, 'Z' + z, 'm' + m + 'z' + z + '.hrd')
 
         # download files if respective folder is missing
 
@@ -170,7 +174,8 @@ class track(object):
 
         # determine available stellar masses
 
-        self._ms = [_os.path.basename(file_)[1:].split('z')[0] for file_ in glob.glob(_os.path.join(self.track_dir, 'Z' + z, '*.hrd'))]
+        self._ms = [_os.path.basename(file_)[1:].split('z')[0] for file_ in glob.glob(
+            _os.path.join(self.track_dir, 'Z' + z, '*.hrd'))]
 
         # update docstring to show available masses
 
@@ -180,12 +185,14 @@ class track(object):
         self.__doc__ = '\n'.join(doc)
 
         if m not in self._ms:
-            raise ValueError('Selected mass m={} for z={} not in available masses: {}'.format(m, z, ', '.join(self._ms)))
+            raise ValueError('Selected mass m={} for z={} not in available masses: {}'.format(
+                m, z, ', '.join(self._ms)))
 
         # load data and create interpoation function
 
         self._track_data = _np.loadtxt(self.track_file)
-        self._track_function = interp1d(self._track_data[:, self._it], self._track_data[:, self._mask].T)
+        self._track_function = interp1d(
+            self._track_data[:, self._it], self._track_data[:, self._mask].T)
 
     @classmethod
     def _download_files(self, delete=True):
@@ -212,7 +219,8 @@ class track(object):
 
         for z in self._zs:
 
-            url = 'http://www.astro.ulb.ac.be/~siess/pmwiki/pmwiki.php/StellarModels/Z{0}?action=dirlistget&f=Grid_z{0}.tar.gz'.format(z)
+            url = 'http://www.astro.ulb.ac.be/~siess/pmwiki/pmwiki.php/StellarModels/Z{0}?action=dirlistget&f=Grid_z{0}.tar.gz'.format(
+                z)
 
             # open url, get file name and size
 
@@ -241,7 +249,8 @@ class track(object):
                         file_size_dl += len(buf)
                         f.write(buf)
 
-                        sys.stdout.write(f"\r{file_name}: {float(file_size_dl) / file_size:{fmt}}")
+                        sys.stdout.write(
+                            f"\r{file_name}: {float(file_size_dl) / file_size:{fmt}}")
                         sys.stdout.flush()
                     print("")
 
@@ -262,7 +271,8 @@ class track(object):
                 with tarfile.open(file_name, mode) as tar:
                     for file_ in tar:
                         if file_.isreg() and file_.name.endswith('.hrd'):
-                            file_.name = _os.path.join(self.track_dir, 'Z' + z, _os.path.basename(file_.name))
+                            file_.name = _os.path.join(
+                                self.track_dir, 'Z' + z, _os.path.basename(file_.name))
                             if _os.path.isfile(file_.name):
                                 _os.unlink(file_.name)
                             tar.extract(file_)

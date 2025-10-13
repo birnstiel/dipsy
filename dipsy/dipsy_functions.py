@@ -362,7 +362,7 @@ def get_observables(r, sig_g, sig_d, a_max, T, opacity, lam, distance=140 * pc,
     sig_da, : array
         reconstructed particle size distribution on grid (res.a, res.x)
     """
-    from scipy.integrate import cumtrapz
+    from scipy.integrate import cumulative_trapezoid as cumtrapz
 
     # get the size distribution
     if (a is not None and sig_d.ndim != 2) or (a is None and sig_d.ndim != 1):
